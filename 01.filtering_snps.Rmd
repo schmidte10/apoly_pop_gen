@@ -1,0 +1,229 @@
+---
+title: "vcf_filtering"
+output: github_document 
+
+---
+
+```{r setup, include=FALSE, hide = TRUE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(cowplot)
+library(stringi)
+library(ggpubr)
+```
+
+## How to query for SNPs
+```bash
+bcftools query -f '%POS\n' <filename.vcf.gz> | wc -l
+```
+
+# General filtering 
+
+Some general filtering will be compelted at the start. However, depending on analysis being conducting different filter thresholds will be further applied to the dataset. Advice for filtering is being taken from [Hemstrom et al., 2024](http://dx.doi.org/10.1038/s41576-024-00738-6). It is highly recommended to read this paper before starting your analysis as the filtering thresholds that you use will influence your final results.  
+
+Filtering steps can be found below as well as in the **filtering.sh** file in this repository. 
+
+Starting number of SNPs **TBD** 
+Starting number of INDVs **TBD**
+
+## 1.Remove sites located within 5bp of any InDels.
+
+```bash
+bcftools filter -g 5 --threads 20 -O z -o gatk.indel5bp.vcf.gz gatk.vcf.gz
+```
+
+Number of SNPs remaining **TBD** 
+Number of INDVs remaining **TBD**
+
+## 2. Hard filtering
+```bash
+bcftools filter -e 'QD<2 | QUAL<30 | SOR>3 | FS>60 | MQ<40 | MQRankSum<-12.5 | ReadPosRankSum<-8' gatk.indel5bp.vcf.gz > gatk.indel5b.hardfilter.vcf.gz  
+```
+
+Number of SNPs remaining **TBD**
+Number of INDVs remaining **TBD**
+
+## 3. Relatedness
+
+Check for the presence of clones, siblings, or other close familial relationships among the sequenced individuals based on pairwise kinship coefficient estimated by vcftools `--relatedness2` 
+
+```bash
+vcftools --gzvcf gatk.indel5bp.hardfilter.vcf.gz --relatedness2 --out gatk.indel5bp.hardfilter  
+```
+There were no pairs of samples with relatedness values indicating close kinship. 
+
+Number of SNPs remaining **TBD**  
+Number of INDVs remaining **TBD**
+
+## 4. Monomorphic sites
+
+```bash
+bcftools filter -e 'AC=0 || AC==AN' --threads 20 gatk.indel5bp.hardfilter.vcf.gz |gzip > gatk.filtered.vcf.gz
+
+```
+SNPs remaining **10,466,114**
+
+```bash 
+vcftools --gzvcf gatk.filteredv3.vcf.gz  --depth 
+vcftools --gzvcf gatk.filteredv3.vcf.gz  --missing-indv 
+vcftools --gzvcf gatk.filteredv3.vcf.gz  --SNPdensity 10000 
+```
+
+```{r data manipulation}
+
+idepth <- read_tsv("./gatk.filteredv3.idepth")
+
+imiss <- read_tsv("./gatk.filteredv3.imiss")
+
+region.list <- factor(rep(c("CORE", "CHAUVEL","LEADING","HERON","LEADING","TORRES STRAIT","REEF HQ"), c(24, 8, 8, 8, 16, 15, 3)))
+
+df <- left_join(idepth,imiss) %>%  
+  tidyr::extract(INDV,into="site",regex="([^_]*)",remove = FALSE) %>% 
+  mutate(region = region.list) %>%
+  arrange(F_MISS) %>% 
+  dplyr::mutate(rn = row_number())
+```
+
+
+```{r,fig.align='center',fig.retina=2,fig.height=10,fig.width=12}
+
+mycol=c("#455A64","#D32F2F","#00BCD4","dodgerblue", "#212121","#FF5722")
+
+p1 = ggplot(df) + geom_col(aes(x=reorder(INDV, rn), y=F_MISS, fill=region)) + 
+  scale_fill_manual(values =mycol) + 
+  xlab("individuals") +
+  ylab("Proportion of genotypes missing") +
+  theme_pubr() + 
+  theme(legend.position = "none", axis.text.x = element_text(angle=90, size = 8))
+
+p2 <- ggplot(df) + geom_col(aes(x=reorder(INDV, rn), y=MEAN_DEPTH, fill=region)) + 
+  scale_fill_manual(values =mycol) + 
+  xlab("") + 
+  ylab("Mean Sequencing Depth") + 
+  theme_pubr() + 
+  theme(axis.text.x =element_blank(), legend.position ="none")
+
+plot_grid(p2,p1,nrow=2, labels = c("A","B"))
+```
+
+**Figure 1:** The statistics of average coverage depth and percentage of missing genotypes in all samples 
+
+
+```{r, fig.align='center',fig.retina=2,fig.height=10,fig.width=12}
+snpden <- read_tsv("./gatk.filteredv3.snpden") %>% 
+  filter(SNP_COUNT>10) 
+
+ggplot(snpden) + geom_histogram(aes(x=SNP_COUNT, y=..density..), binwidth = 5, color ="black", fill="#455A64") + 
+  xlab("SNP count per 10000kb") + ylab("Density") + 
+  theme_classic()
+```
+
+
+**Figure 2:** SNP distribution for all samples
+
+#### Hard filtering criteria
+
+#### Note1 
+
+No threshold or cut/off was done for **Inbreeding coefficient**. When applied a large mount of SNPs were excluded from the analysis. Additionally, deeper thought needs to be given on whether or not this criteria is appropriate for _Acanthchromis polyacanthus_. _A. polyacanthus_ is a species that does not posses a pelagic larvae stage and contributes to the raising of offspring via parent care. Offspring are unlikely to leave the reef they were hatched on. Therefore, founder effects during colonization events may have had a significant impact on population genetic structure and as sea levels rose after the last glacial period and populations became cut off from each other, gene flow would have become highly restricted (if present at all). Therefore, it may not be surprising that populations have higher inbreeding coefficients than other 'natural' populations. Within this quailty filtering steps no inbreeding coefficient threshold was applied due to the unique life history traits of the species being studied.  
+
+#### Note2 
+
+THe figure below shows the hard-cut off values that were used during the quailty hard-filtering step
+
+
+```bash
+bcftools query -f '%QD\n' gatk.indel5bp.vcf.gz > QD_values.txt
+bcftools query -f '%QUAL\n' gatk.indel5bp.vcf.gz > QUAL_values.txt
+bcftools query -f '%SOR\n' gatk.indel5bp.vcf.gz > SOR_values.txt
+bcftools query -f '%FS\n' gatk.indel5bp.vcf.gz > FS_values.txt
+bcftools query -f '%MQ\n' gatk.indel5bp.vcf.gz > MQ_values.txt
+bcftools query -f '%MQRankSum\n' gatk.indel5bp.vcf.gz > MQRankSum_values.txt
+bcftools query -f '%ReadPosRankSum\n' gatk.indel5bp.vcf.gz > RPRS_values.txt
+```
+```bash
+bcftools query -f '%QD\n' gatk.filteredv3.vcf.gz > QD_values_filter.txt
+bcftools query -f '%QUAL\n' gatk.filteredv3.vcf.gz > QUAL_values_filter.txt
+bcftools query -f '%SOR\n' gatk.filteredv3.vcf.gz > SOR_values_filter.txt
+bcftools query -f '%FS\n' gatk.filteredv3.vcf.gz > FS_values_filter.txt
+bcftools query -f '%MQ\n' gatk.filteredv3.vcf.gz > MQ_values_filter.txt
+bcftools query -f '%MQRankSum\n' gatk.filteredv3.vcf.gz > MQRankSum_values_filter.txt
+bcftools query -f '%ReadPosRankSum\n' gatk.filteredv3.vcf.gz > RPRS_values_filter.txt
+```
+
+
+```{r,fig.retina=2, fig.height=10,fig.width=12}
+QD <- read.delim("QD_values.txt") 
+colnames(QD)[1]<-"QD"
+QUAL <- read.delim("QUAL_values.txt")  
+colnames(QUAL)[1]<-"QUAL" 
+SOR  <- read.delim("SOR_values.txt")  
+colnames(SOR)[1]<-"SOR" 
+FS <- read.delim("FS_values.txt")  
+colnames(FS)[1]<-"FS" 
+MQ <- read.delim("MQ_values.txt")  
+colnames(MQ)[1]<-"MQ" 
+MQRankSum <- read.delim("MQRankSum_values.txt")
+colnames(MQRankSum)[1]<-"MQRankSum" 
+RPRS <- read.delim("RPRS_values.txt")  
+colnames(RPRS)[1]<-"RPRS"  
+
+QD_filtered <- read.delim("QD_values_filter.txt") 
+colnames(QD_filtered)[1]<-"QD" 
+QUAL_filtered  <- read.delim("QUAL_values_filter.txt") 
+colnames(QUAL_filtered)[1]<-"QUAL" 
+SOR_filtered   <- read.delim("SOR_values_filter.txt") 
+colnames(SOR_filtered)[1]<-"SOR"
+FS_filtered  <- read.delim("FS_values_filter.txt") 
+colnames(FS_filtered)[1]<-"FS"
+MQ_filtered  <- read.delim("MQ_values_filter.txt")
+colnames(MQ_filtered)[1]<-"MQ"
+MQRankSum_filtered  <- read.delim("MQRankSum_values_filter.txt") 
+colnames(MQRankSum_filtered)[1]<-"MQRankSum"
+RPRS_filtered  <- read.delim("RPRS_values_filter.txt") 
+colnames(RPRS_filtered)[1]<-"RPRS"
+
+q1 <- ggplot(QD) + geom_histogram(aes(as.numeric(x=QD), y=..density..), binwidth = 1, color="black", fill = "#455A64") + 
+  geom_histogram(data=QD_filtered, aes(x=as.numeric(QD), y=..density..), binwidth = 1, color="black", fill = "red") +
+         xlab("Quailty Depth") + ylab("Density") + 
+         theme_classic() + 
+          geom_vline(xintercept =2, linetype ="dashed", color = "red", size = 1.5)
+
+q2 <- ggplot(QUAL) + geom_histogram(aes(x=as.numeric(QUAL), y=..density..), binwidth = 10, color="black", fill = "#455A64") +
+  geom_histogram(data=QUAL_filtered, aes(x=as.numeric(QUAL), y=..density..), binwidth = 10, color="red", fill = "red") +
+         xlab("Quailty") + ylab("Density") + 
+         theme_classic() + xlim(0,5000) +
+          geom_vline(xintercept =30, linetype ="dashed", color = "red", size = 1.5)
+
+q3 <- ggplot(SOR) + geom_histogram(aes(x=as.numeric(SOR), y=..density..), binwidth = 1, color="black", fill = "#455A64") + 
+  geom_histogram(data=SOR_filtered, aes(x=as.numeric(SOR), y=..density..), binwidth = 1, color="black", fill = "red") +
+         xlab("Strand Odds Ratio") + ylab("Density") + 
+         theme_classic() + 
+          geom_vline(xintercept =3, linetype ="dashed", color = "red", size = 1.5)
+
+q4 <- ggplot(FS) + geom_histogram(aes(x=as.numeric(FS), y=..density..), binwidth = 2, color="black", fill = "#455A64") +
+  geom_histogram(data=FS_filtered, aes(x=as.numeric(FS), y=..density..), binwidth = 2, color="black", fill = "red") +
+         xlab("Disher Strand Bias") + ylab("Density") + xlim(0,100) +
+         theme_classic() + 
+          geom_vline(xintercept =60, linetype ="dashed", color = "red", size = 1.5)
+
+q5 <- ggplot(MQRankSum) + geom_histogram(aes(x=as.numeric(MQRankSum), y=..density..), binwidth = 2, color="black", fill = "#455A64") + 
+  geom_histogram(data=MQRankSum_filtered, aes(x=as.numeric(MQRankSum), y=..density..), binwidth = 2, color="black", fill = "red") + 
+  xlab("Mapping Quailty Rank Sum") + ylab("Density") + 
+         theme_classic() + 
+          geom_vline(xintercept =-12.5, linetype ="dashed", color = "red", size = 1.5)
+
+q6 <- ggplot(RPRS) + geom_histogram(aes(x=as.numeric(RPRS), y=..density..), binwidth = 2, color="black", fill = "#455A64") + 
+  geom_histogram(data=RPRS_filtered, aes(x=as.numeric(RPRS), y=..density..), binwidth = 2, color="black", fill = "red") +
+         xlab("Rank Sum Test of Alt vs. Ref read position") + ylab("Density") + 
+         theme_classic() + 
+          geom_vline(xintercept =-8, linetype ="dashed", color = "red", size = 1.5) 
+
+plot_grid(q1,q2,q3,q4,q5,q6, nrow=2, labels =c("QD","QUAL","SOR","FS","MQRankSum","ReadPosRankSum"))
+```
+
+```{r, include=FALSE}
+   # add this chunk to end of mycode.rmd
+   file.rename(from="01. filtering_snps.md", 
+               to="01.filtering_snps.md")
+```
