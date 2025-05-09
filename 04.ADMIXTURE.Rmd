@@ -50,4 +50,4 @@ do
 done
 ```
 
-Data can be plotted using the following script ![04.ADMIXTURE_R](https://github.com/schmidte10/apoly_pop_gen/blob/main/Rmarkdown_files/04.ADMIXTURE_R.Rmd)
+Data can be plotted using the following script [04.ADMIXTURE_R](https://github.com/schmidte10/apoly_pop_gen/blob/main/Rmarkdown_files/04.ADMIXTURE_R.Rmd)
