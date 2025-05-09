@@ -70,7 +70,6 @@ vcftools --gzvcf gatk.filteredv3.vcf.gz  --SNPdensity 10000
 ```
 
 ```{r data manipulation}
-
 idepth <- read_tsv("./gatk.filteredv3.idepth")
 
 imiss <- read_tsv("./gatk.filteredv3.imiss")
@@ -219,10 +218,11 @@ q6 <- ggplot(RPRS) + geom_histogram(aes(x=as.numeric(RPRS), y=..density..), binw
          theme_classic() + 
           geom_vline(xintercept =-8, linetype ="dashed", color = "red", size = 1.5) 
 
+
 plot_grid(q1,q2,q3,q4,q5,q6, nrow=2, labels =c("QD","QUAL","SOR","FS","MQRankSum","ReadPosRankSum"))
 ```
 
-```{r, include=FALSE}
+```{r, include=FALSE, eval =FALSE}
    # add this chunk to end of mycode.rmd
    file.rename(from="01. filtering_snps.md", 
                to="01.filtering_snps.md")
