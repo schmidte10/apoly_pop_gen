@@ -21,7 +21,7 @@ cd ./2024analysis
 
 module load plink2
 
-#plink2 --vcf ./gatk/gatk.filteredv3.vcf.gz --make-pgen --allow-extra-chr --out ./03.Ordinations/gatk.filteredv3
+plink2 --vcf ./gatk/gatk.filteredv3.vcf.gz --make-pgen --allow-extra-chr --out ./03.Ordinations/gatk.filteredv3
 plink2 --pfile ./03.Ordinations/gatk.filteredv3 --allow-extra-chr --pca --out ./03.Ordinations/gatk.filteredv3.pca
 
 
