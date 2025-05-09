@@ -17,7 +17,16 @@ module load conda3
 shopt -s expand_aliases
 source /etc/profile.d/modules.sh   
 
-cd ./2024analysis/04.OutlierAnalysis 
+cd 2024analysis
+
+module load vcftools 
+module load plink
+
+# VCF to PLINK
+vcftools --vcf data/gatk.filtered.relaxed_studywide.vcf.gz --plink --out data/gatk.filtered.relaxed_studywide.plink 
+
+# convert PLINK to BED
+plink --file data/gatk.filtered.relaxed_studywide.plink --make-bed --noweb --out apoly_populations
 
 module load R 
 
