@@ -20,6 +20,6 @@ module load pixy
 
 cd ./2024analysis/
 
-#pixy --stats fst pi dxy --vcf data/gatk.filtered.relaxed_studywide.vcf.gz --populations data/apoly_populations_metadata_INDPOP.txt --window_size 10000 --n_cores 8 --bypass_invariant_check yes
+pixy --stats fst pi dxy --vcf data/gatk.filtered.relaxed_studywide.vcf.gz --populations data/apoly_populations_metadata_INDPOP.txt --window_size 10000 --n_cores 8 --bypass_invariant_check yes
 
 
