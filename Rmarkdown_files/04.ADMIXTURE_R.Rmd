@@ -1,0 +1,152 @@
+---
+title: "04.ADMIXTURE_R"
+author: "Elliott Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Admixture analysis 
+
+```{r setup, include=FALSE, hide = TRUE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_knit$set(root.dir = "C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Local_adaptation/Chapter1_LocalAdaptation/genetic_data")
+```
+
+```{r}
+library(tidyverse)
+library(cowplot)
+```
+```{r, eval=FALSE, hide=TRUE}
+#Apolyacanthus <- read.delim("Apolyacanthus.bim", header=FALSE) 
+#Apolyacanthus$V1 = substr(Apolyacanthus$V1, 9, 16); Apolyacanthus$V2 = gsub(".*:","",Apolyacanthus$V2)
+```
+
+
+
+```{r admixture, fig.width=5.2, fig.height=6,fig.retina=2,out.extra='style="float:left"'}
+cv <- read_table("CV.txt", 
+    col_names = c("CV","value")) 
+
+ggplot(cv, aes(x=CV,y=value)) + geom_line() + geom_point(shape=21, fill="white", alpha=1)+ 
+  theme_bw() + 
+  theme(panel.grid = element_blank()) +
+  labs(x="K",y="Cross-validation error") 
+```
+
+```{r fig.height=12, fig.width=6, fig.retina=2, fig.dpi=300}
+
+load("pop.table.RData") 
+load("mycol.RData") 
+sample_order <- pop.table$value
+write.table(sample_order, file = "sample_order.txt", sep = "\t",
+            row.names = FALSE, col.names = FALSE)
+
+
+samples <- scan("sample_order.txt", character())
+read_Q <- function(filename) {
+  tb <- read_table(filename,col_names = FALSE) %>% 
+  add_column(samples=samples) %>% 
+  mutate(pop=str_split(samples,"_") %>% map_chr(first)) %>% 
+  gather(cluster,proportion,-samples,-pop)
+  
+  tb$samples <- factor(tb$samples, levels = tb %>% 
+                         arrange(pop) %>% pull(samples) %>% unique())
+  tb$pop <- factor(tb$pop,levels = c("SUD","VLA","TON","CHA","CKM","KES"))
+  
+  tb$cluster <- factor(tb$cluster, levels=rev(unique(tb$cluster)))
+  
+  tb
+}
+
+pop.labs <- c("SUD","VLA","TON","CHA","CKM","KES")
+names(pop.labs) <- c("SUD","VLA","TON","CHA","CKM","KES") 
+
+p2 <- ggplot(read_Q("admixture/Apolyacanthus.2.Q"),aes(x=samples)) +  geom_col(aes(group=samples,y=proportion,fill=cluster),show.legend = FALSE) + 
+  theme_minimal() + 
+  facet_grid(~pop,switch = "x",scales = "free",space = "free") + 
+  scale_color_brewer(palette = "Set2") +
+  theme(axis.text.x = element_blank(),panel.grid = element_blank(),strip.text.x = element_blank())+
+  labs(y="Ancestry (K=2)", x="")
+
+p3 <- ggplot(read_Q("admixture/Apolyacanthus.3.Q"),aes(x=samples)) +  geom_col(aes(group=samples,y=proportion,fill=cluster),show.legend = FALSE) + 
+  theme_minimal() + 
+  facet_grid(~pop,switch = "x",scales = "free",space = "free") + 
+  scale_color_brewer(palette = "Set2") +
+  theme(axis.text.x = element_blank(),panel.grid = element_blank(),strip.text.x = element_blank())+
+  labs(y="Ancestry (K=3)", x="")  
+
+p4 <- ggplot(read_Q("admixture/Apolyacanthus.4.Q"),aes(x=samples)) +  geom_col(aes(group=samples,y=proportion,fill=cluster),show.legend = FALSE) + 
+  theme_minimal() + 
+  facet_grid(~pop,switch = "x",scales = "free",space = "free") + 
+  scale_color_brewer(palette = "Set2") +
+  theme(axis.text.x = element_blank(),panel.grid = element_blank(),strip.text.x = element_blank())+
+  labs(y="Ancestry (K=4)", x="")  
+
+p5 <- ggplot(read_Q("admixture/Apolyacanthus.5.Q"),aes(x=samples)) +  geom_col(aes(group=samples,y=proportion,fill=cluster),show.legend = FALSE) + 
+  theme_minimal() + 
+  facet_grid(~pop,switch = "x",scales = "free",space = "free") + 
+  scale_color_brewer(palette = "Set2") +
+  theme(axis.text.x = element_blank(),panel.grid = element_blank(),strip.text.x = element_blank())+
+  labs(y="Ancestry (K=5)", x="")   
+
+p6 <- ggplot(read_Q("admixture/Apolyacanthus.6.Q"),aes(x=samples)) +  geom_col(aes(group=samples,y=proportion,fill=cluster),show.legend = FALSE) + 
+  theme_minimal() + 
+  facet_grid(~pop,switch = "x",scales = "free",space = "free") + 
+  scale_color_brewer(palette = "Set2") +
+  theme(panel.grid = element_blank(), 
+        axis.text.x = element_text(angle = 90, vjust =0.5, hjust=1), 
+        axis.title.x = element_blank(),
+        strip.text.x = element_blank())+
+  labs(y="Ancestry (K=6)", x="")
+
+cowplot::plot_grid(p2,p3,p4,p5,p6, nrow = 5, ncol = 1)
+```
+
+
+SMART_PCA
+```{r}
+library(tidyverse)
+library(smartsnp)
+```
+
+```{r}
+Apolyacanthus <- read.delim("Apolyacanthus.fam", header=FALSE) 
+genotypeMatrix <- read.delim("genotypeMatrix.traw") 
+
+names(genotypeMatrix)[7:44] <- substring(names(genotypeMatrix)[7:44], 9)
+genotypeMatrix2 <- genotypeMatrix[7:44] 
+
+write_tsv(genotypeMatrix2, file="C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Local_adaptation/Chapter1_LocalAdaptation/genetic_data/genotypeMatrix2.traw")
+
+# after this is saved go into file and delete header labels
+
+nsamples <- nrow(Apolyacanthus) 
+
+pop.table <- Apolyacanthus$V1 %>%
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) %>% 
+  mutate(value2 = paste(value, value, sep="_"))
+
+sm.pca <- smart_pca(snp_data = "genotypeMatrix2v2.traw",
+                    sample_group = pop.table$Population,
+                    missing_value = NA, 
+                    pc_axes =20)
+
+#sm.pca$pca.sample_coordinates 
+#sm.pca$pca.snp_loadings
+#sm.pca$pca.eigenvalues 
+
+sm.pca$pca.eigenvalues[1]/sum(sm.pca$pca.eigenvalues) # variance explained PC1 - 19.0%
+sm.pca$pca.eigenvalues[4]/sum(sm.pca$pca.eigenvalues) # variance explained PC2 - 16.3% 
+sm.pca$pca.eigenvalues[7]/sum(sm.pca$pca.eigenvalues) # variance explained PC3 - 5.9%
+sm.pca$pca.eigenvalues[10]/sum(sm.pca$pca.eigenvalues) # variance explained PC4 - 4.3%
+
+ggplot(sm.pca$pca.sample_coordinates, aes(PC1, PC2, color= Group)) + 
+  geom_point() + theme_classic() + 
+  xlab("PC1 (19.0%)") + ylab("PC2 16.3%")
+
+```
+
