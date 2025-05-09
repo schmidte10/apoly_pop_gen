@@ -1,0 +1,65 @@
+---
+title: "02.demographic_patterns"
+author: "Elliott Schmidt"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ggpubr)
+library(cowplot)
+het <- read_tsv("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/02.DemographicPatterns/plink2.het") 
+region.list <- factor(rep(c("CORE", "CHAUVEL","LEADING","HERON","LEADING","TORRES STRAIT","REEF HQ"), c(24, 8, 8, 8, 16, 15, 3))) 
+mycol=c("#FF5722","#D32F2F","dodgerblue","#00BCD4","#455A64","#212121")
+``` 
+
+As part of this calculation PLINK provides the observed and expected heterozygosity (Ho, He) as well as the inbreeding coefficient **F** which is calculated as $1-\frac{H0}{He}$ 
+
+```{r}
+het2 <- het |>
+  rename(sampleID = '#IID') |> 
+  mutate(region = region.list, 
+         Ho = (OBS_CT-`O(HOM)`)/OBS_CT, 
+         He = (OBS_CT-`E(HOM)`)/OBS_CT) |> 
+  pivot_longer(cols = c(F,Ho,He), names_to = "stat", values_to = "value") |> 
+  mutate(region=fct_relevel(region, c("TORRES STRAIT","CORE","LEADING","CHAUVEL","HERON","REEF HQ")))
+
+```
+
+```{r, fig.retina=2,fig.height=3.5,fig.width=7}
+
+
+f_plot <- het2 |> 
+  filter(stat=="F") |> 
+  ggplot(aes(x=region,y=value)) + 
+  geom_boxplot(aes(color=region),alpha=0.5) + 
+  geom_point(aes(x=region,color=region)) + 
+  theme_pubr() + 
+  theme(legend.position = "none", 
+        text = element_text(size=12) , 
+        axis.text.x = element_text(size=12, angle =45, hjust =1)) +
+  scale_color_manual(values = mycol) + 
+  xlab("") + ylab("Inbreeding Coeffient");f_plot
+
+
+het_plot <- het2 |> 
+  filter(stat!="F") |> 
+  ggplot(aes(x=region,y=value)) + 
+  geom_boxplot(aes(fill=stat,color=stat),alpha=0.5) + 
+#  geom_point(aes(x=location,color=stat), position = position_jitter(w=0.1,h=0)) + 
+  theme_pubr() + 
+  theme(legend.position = c(.95,.95), 
+        legend.justification = c("right", "top"), 
+        legend.box.just = "right", 
+        legend.margin = margin(6, 6, 6, 6),
+        legend.title = element_blank(), 
+        text = element_text(size=12) , 
+        axis.text.x = element_text(size=12, angle =45, hjust =1)) +
+#  scale_color_manual(values = myCol) + 
+  xlab("") + ylab("Heterozygosity"); het_plot
+
+plot_grid(f_plot,het_plot,labels=c("A","B"))
+
+```
