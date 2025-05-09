@@ -94,7 +94,7 @@ rm 10.PSMC/vlassof/bootstrap/${sample}.round-*.psmc
 fi
 
 #plotting 
-#psmc_plot.pl -u 1.1e-8 -g 3 10.PSMC/psmc_plot 10.PSMC/CSUD006_S1_bs_combined.psmc
+#psmc_plot.pl -u 2.58e-8 -g 3 10.PSMC/psmc_plot 10.PSMC/CSUD006_S1_bs_combined.psmc
 #ps2pdf 10.PSMC/psmc_plot.eps 10.PSMC/psmc_plot.pdf
 
 

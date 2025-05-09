@@ -2,7 +2,7 @@
 #PBS -j oe 
 #PBS -N SMC++
 #PBS -l select=1:ncpus=8:mem=100gb 
-#PBS -l walltime=01:00:00
+#PBS -l walltime=12:00:00
 #PBS -m ae
 #PBS -M elliott.schmidt@my.jcu.edu.au
 
@@ -23,10 +23,6 @@ module load tabix
 module load bedtools2
 module load samtools 
 module load smcpp
-
-#ulimit -n 4096
-#export OMP_NUM_THREADS=1  
-#export OPENBLAS_NUM_THREADS=1
 
 #while read chr;do 
 #bcftools view -r "$chr" -Oz -o 11.SMC++/"${chr}".vcf.gz data/gatk.filtered.relaxed_studywide.vcf.gz 
@@ -61,7 +57,7 @@ module load smcpp
 #--mask 11.SMC++/all.masked.bed.gz data/gatk.filtered.relaxed_studywide.vcf.gz NC_067113.1_CSUD0061_S1.smc.gz NC_067113.1\
 #SUD:$(cat data/population_lists/sud.txt | paste -s -d ',') 
 
-#chr_file="data/chr_names.txt" 
+chr_file="data/chr_names.txt" 
 #sample_file="data/population_lists/sud.txt" 
 
 #for chr in $(cat $chr_file); do
@@ -72,6 +68,28 @@ module load smcpp
   #done
 #done 
 
-smc++ estimate --cores 8 -o SMC_test_results --base SUD --em-iterations 2 --timepoints 20 20000 --thinning 2500 --knots 40 2.85e-8 11.SMC++/smc_files/CSUD006_S1_NC_067113.1.smc.gz 
-#smc++ estimate --cores 2 -o SMC_test_results --base SUD --em-iterations 1 --timepoints 20 200 --knots 40 2.85e-8 11.SMC++/smc_files/CSUD006_S1_NC_067113.1.smc.gz 2> error_log.txt
-#smc++ estimate --cores 30 -o estimate --base SUD --em-iterations 50 --timepoints 20 20000 --thinning 3000 --knots 40 2.85e-8 11.SMC++/smc_files/merged/CSUD.smc.gz
+#sample_file="data/population_lists/her.txt" 
+
+#for chr in $(cat $chr_file); do
+  #for sample in $(cat $sample_file); do
+    #smc++ vcf2smc -d $sample $sample \
+      #--mask 11.SMC++/all.masked.bed.gz data/gatk.filtered.relaxed_studywide.vcf.gz 11.SMC++/smc_files/her/${sample}_${chr}.smc.gz $chr \
+      #HER:$(cat $sample_file | paste -s -d ',')
+  #done
+#done 
+
+#cat 11.SMC++/smc_files/her/LHER*.smc.gz > 11.SMC++/smc_files/merged/LHER.smc.gz
+
+sample_file="data/population_lists/ckc.txt" 
+
+for chr in $(cat $chr_file); do
+  for sample in $(cat $sample_file); do
+    smc++ vcf2smc -d $sample $sample \
+      --mask 11.SMC++/all.masked.bed.gz data/gatk.filtered.relaxed_studywide.vcf.gz 11.SMC++/smc_files/ckc/${sample}_${chr}.smc.gz $chr \
+      CKC:$(cat $sample_file | paste -s -d ',')
+  done
+done 
+
+cat 11.SMC++/smc_files/ckc/LHER*.smc.gz > 11.SMC++/smc_files/merged/LCKC.smc.gz
+
+

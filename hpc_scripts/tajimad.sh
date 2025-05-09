@@ -29,5 +29,13 @@ bcftools view -S data/population_lists/${pop}.txt data/gatk.filtered.relaxed_stu
 } 
 
 export -f cal_td 
-cal_td sud cha ckc her kes rhq stb ton tor vla
-
+cal_td sud 
+cal_td ton
+cal_td ckc
+cal_td cha
+cal_td tor
+cal_td vla
+cal_td kes
+cal_td stb
+cal_td her
+cal_td rhq
