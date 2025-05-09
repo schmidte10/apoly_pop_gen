@@ -24,13 +24,13 @@ module load admixture
 
 cd ./2024analysis/ 
 
-#vcftools --gzvcf gatk/gatk.indel5bp.hardfilter.vcf.gz \
-#--max-missing 0.5 --min-meanDP 10 --max-meanDP 30 \
-#--minDP 3 --minGQ 40 --mac 2 --remove-filtered-geno-all --recode \
-#--recode-INFO-all --stdout | \
-#gzip > 05.2.Population_structure/gatk.filtered.relaxed_studywide.vcf.gz  
+vcftools --gzvcf gatk/gatk.indel5bp.hardfilter.vcf.gz\
+--max-missing 0.5 --min-meanDP 10 --max-meanDP 30\
+--minDP 3 --minGQ 40 --mac 2 --remove-filtered-geno-all --recode\
+--recode-INFO-all --stdout |\
+gzip > 05.2.Population_structure/gatk.filtered.relaxed_studywide.vcf.gz  
 
-#vcftools --remove-indv CTON069_S13 --gzvcf 05.2.Population_structure/gatk.filtered.relaxed_studywide.vcf.gz \
+#vcftools --remove-indv CTON069_S13 --gzvcf 05.2.Population_structure/gatk.filtered.relaxed_studywide.vcf.gz\
 #--recode --recode-INFO-all --stdout | gzip > 05.2.Population_structure/gatk.filtered.relaxed_studywide_invariants.vcf.gz 
 
 cd 05.2.Population_structure
@@ -39,7 +39,7 @@ cd 05.2.Population_structure
 
 #plink2 --vcf ../data/gatk.filtered.relaxed_studywide.vcf.gz --out apolyacanthus --allow-extra-chr --max-alleles 2 --make-bed --set-missing-var-ids @:# --double-id --geno 0.1 --mac 2 --hwe 0.0001 
 
-#plink2 --bfile apolyacanthus --indep-pairwise 50 10 0.1 --out apolyacanthus \
+#plink2 --bfile apolyacanthus --indep-pairwise 50 10 0.1 --out apolyacanthus\
     --allow-extra-chr --bad-ld --set-missing-var-ids @:#
 
 #plink2 --bfile apolyacanthus --extract apolyacanthus.prune.in --recode ped --allow-extra-chr --out apolyacanthus_ldpruned  
