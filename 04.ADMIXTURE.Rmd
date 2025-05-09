@@ -1,8 +1,6 @@
 ---
 title: "Population structure"
-output:
-  github_document:
-    pandoc_args: --webtex
+output: github_document 
 --- 
 
 In addition to filters outlined previously in section [0.1filtering_snps](https://github.com/schmidte10/Chapter2_Genetics/blob/main/01.filtering_snps.md) further filtering steps for were performed for population structure analysis (PCA, ADMIXTURE) as follows: 
@@ -52,3 +50,4 @@ do
 done
 ```
 
+Data can be plotted using the following script (https://github.com/schmidte10/apoly_pop_gen/blob/main/Rmarkdown_files/04.ADMIXTURE_R.Rmd)
