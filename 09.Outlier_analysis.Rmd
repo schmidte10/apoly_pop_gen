@@ -1,0 +1,121 @@
+---
+title: "09a.PCAdapt"
+output: github_document 
+--- 
+
+```bash
+module load plink2
+module load bcftools 
+mdoule load tabix
+```
+
+convert VCF file to PLINK
+
+```bash
+bcftools view -m2 -M2 -v snps data/gatk.filtered.relaxed_studywide.bicolor.vcf.gz -Oz -o data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz 
+
+tabix -p vcf data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz
+
+plink2 --vcf data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz --make-bed --allow-extra-chr --out data/gatk.filtered.relaxed_studywide.bicolor.biallelic.test.vcf.gz
+```
+# Load libraries
+
+```{r eval=FALSE, echo =TRUE}
+library("pcadapt")
+library("ggplot2")
+```
+
+# Import data
+
+```{r eval=FALSE, echo =TRUE}
+apoly_bed <- "data/gatk.filtered.relaxed_studywide.bicolor.biallelic.test.bed"
+apoly_pcadapt <-  read.pcadapt(apoly_bed, type = "bed")
+```
+
+# PCAdapt
+
+```{r eval=FALSE, echo =TRUE}
+apoly_populations_kplot <- pcadapt(input = apoly_pcadapt, K=10)
+pdf("outputs/apoly_populations_kplot.pdf")
+plot(apoly_populations_kplot, option = "screeplot")
+dev.off() 
+```
+
+A K value of 2 is most approproate, as this is the value of K after which the curve starts to flatten out more. This means we have identified the PC's that capture population structure. 
+
+```{r eval=FALSE, echo =TRUE}
+apoly_populations_pca <- pcadapt(input =apoly_pcadapt, K =3)
+write.table(apoly_populations_pca$scores, "outputs/pcadapt_scores.txt")
+summary(apoly_populations_pca)
+```
+
+Load file that has list of samples and populations 
+
+Example: 
+
+sample1   1   pop1 
+
+sample2   1   pop1 
+
+sample3   2   pop2 
+
+sample4   3   pop3 
+
+```{r eval=FALSE, echo =TRUE}
+poplist.names <- read.delim("data/population_list.txt", header =FALSE)
+```
+
+# PCA
+
+## PC1 v PC2
+```{r eval =FALSE, echo =TRUE}
+pdf("outputs/apoly_populations_pca1v2.pdf")
+plot(apoly_populations_pca, option = "scores", i=1, j=2, pop = poplist.names$V3)
+dev.off()
+```
+
+## PC1 v PC3
+```{r eval =FALSE, echo =TRUE}
+pdf("outputs/apoly_populations_pca1v3.pdf")
+plot(apoly_populations_pca, option = "scores", i=1, j=3, pop = poplist.names$V3)
+dev.off()
+```
+
+## PC2 v PC3
+```{r eval =FALSE, echo =TRUE}
+pdf("outputs/apoly_populations_pca2v3.pdf")
+plot(apoly_populations_pca, option = "scores", i=2, j=3, pop = poplist.names$V3)
+dev.off()
+```
+
+# Manhattan plot
+```{r eval =FALSE, echo =TRUE}
+png("outputs/pcadapt_apoly_manhattan.png")
+plot(apoly_populations_pca, option= "manhattan") 
+dev.off() 
+```
+
+# qqplot
+```{r eval =FALSE, echo =TRUE}
+png("outputs/pcadapt_apoly_qqplot.png") 
+plot(apoly_populations_pca, option ="qqplot") 
+dev.off()
+```
+
+# p-values of outliers
+```{r eval =FALSE, echo =TRUE}
+apoly_pcadapt_pvalues <- as.data.frame(apoly_populations_pca$pvalues) 
+pdf("outputs/apoly_populations_pvalues.pdf")
+hist(apoly_populations_pca$pvalues, xlab ="p-values", main =NULL, breaks =50, col ="skyblue") 
+dev.off() 
+```
+
+# significant outliers
+```{r eval =FALSE, echo =TRUE}
+apoly_populations_padj <- p.adjust(apoly_populations_pca$pvalues, method ="bonferroni") 
+alpha <- 0.1 #[adjust as necessary]
+outliers <- which(apoly_populations_padj < alpha) 
+length(outliers) 
+
+write.table(outliers, file="outputs/apoly_populations_pcaoutliers.txt") 
+```
