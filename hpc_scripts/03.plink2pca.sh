@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -j oe
 #PBS -N plink2pca
-#PBS -l select=1:ncpus=2:mem=250gb
+#PBS -l select=1:ncpus=2:mem=120gb
 #PBS -l walltime=30:00:00
 #PBS -m ae
 #PBS -M elliott.schmidt@my.jcu.edu.au
