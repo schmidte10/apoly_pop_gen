@@ -13,7 +13,6 @@ echo "PBS: Job identifier is $PBS_JOBID"
 echo "PBS: Job name is $PBS_JOBNAME$no"
 echo "------------------------------------------------------"
 
-module load conda3 
 shopt -s expand_aliases
 source /etc/profile.d/modules.sh   
 
