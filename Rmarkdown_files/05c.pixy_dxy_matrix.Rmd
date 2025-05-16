@@ -1,0 +1,88 @@
+---
+title: "pixy_dxy_matrix"
+author: "Elliott Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r warning=FALSE}
+library(tidyverse)
+library(reshape2)
+library(ggplot2)
+```
+
+```{r}
+pixy_dxy <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pop/pixy_dxy.txt", 
+     delim = "\t", escape_double = FALSE, 
+     trim_ws = TRUE)
+```
+
+# Create dxy table [test]
+```{r}
+dxy_data <- pixy_dxy |> 
+  drop_na(avg_dxy)
+overall_dxy <- sum(dxy_data$avg_dxy * 10000)/max(dxy_data$window_pos_2)
+overall_dxy
+```
+
+# Loop populations through dxy table 
+
+```{r}
+populations <- unique(c("Torres","Tongue","Vlassof","Sudbury","Cockermouth","Keswick","StBees","Chauvel","Heron"))
+dxy_matrix <- matrix(NA, nrow = length(populations), ncol = length(populations), 
+                     dimnames = list(populations, populations))  
+
+
+# Loop through each unique pair of populations
+for (i in 1:(length(populations)-1)) {
+  for (j in (i+1):length(populations)) {
+    
+    # Get the population pair
+    popA <- populations[i]
+    popB <- populations[j]
+    
+    # Filter the PIXY output for this population pair
+    dxy_data <- subset(pixy_dxy, (pop1 == popA & pop2 == popB) | (pop1 == popB & pop2 == popA)) |> 
+      drop_na(avg_dxy)
+    
+    # Calculate the weighted mean dxy
+    if (nrow(dxy_data) > 0) {
+      overall_dxy <- sum(dxy_data$avg_dxy * dxy_data$no_sites) / max(dxy_data$window_pos_2)
+      
+      # Store the dxy value in the matrix
+      dxy_matrix[popA, popB] <- overall_dxy
+      dxy_matrix[popB, popA] <- overall_dxy  # Symmetric matrix
+      
+    }
+  }
+} 
+
+dxy_matrix
+write.csv(dxy_matrix, file ="./03.population_structure_NEW/pixy_tables/dxy_matrix.csv")
+```
+
+# Plot matrix
+```{r}
+  get_lower_tri<-function(dxy_matrix){
+    dxy_matrix[lower.tri(dxy_matrix)] <- NA
+    return(dxy_matrix)
+  }
+
+upper_tri <- get_lower_tri(dxy_matrix) 
+melted_fst <- melt(upper_tri, na.rm=TRUE) 
+
+dxy.matrix <- ggplot(data=melted_fst, aes(Var2, Var1, fill = value)) + 
+  geom_tile(color="white")+
+ scale_fill_gradient(low = "cornsilk", high = "maroon1", limit = c(0,0.1), space = "Lab", 
+   name="Dxy\nCorrelation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed(); dxy.matrix
+```
+
+```{r}
+pdf(file ="./dxy_matrix.pdf")
+dxy.matrix
+dev.off()
+```

@@ -1,0 +1,141 @@
+---
+title: "fst"
+author: "Elliott Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Population
+```{r}
+library("tidyverse")
+```
+
+```{r}
+pixy_fst <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pop/pixy_fst.txt", 
+     delim = "\t", escape_double = FALSE, 
+     trim_ws = TRUE)
+``` 
+
+```{r warning=FALSE}
+pixy_fst2 <-pixy_fst |> 
+  separate(chromosome, c("designation","chromosome")) |> 
+  filter(designation =="NC") |> 
+  unite("pop3",pop1:pop2, remove=FALSE) |> 
+  filter(pop3 %in% c("Sudbury_Cockermouth","Sudbury_Heron","Sudbury_Torres","Cockermouth_Heron","Cockermouth_Torres","Heron_Torres"))
+```
+
+```{r}
+pixy_fst3 <- pixy_fst2 |> 
+  mutate(chromosome =case_when(chromosome =="067113" ~ "01", 
+                               chromosome =="067114" ~ "02",
+                               chromosome =="067115" ~ "03",
+                               chromosome =="067116" ~ "04",
+                               chromosome =="067117" ~ "05",
+                               chromosome =="067118" ~ "06",
+                               chromosome =="067119" ~ "07",
+                               chromosome =="067120" ~ "08",
+                               chromosome =="067121" ~ "09",
+                               chromosome =="067122" ~ "10",
+                               chromosome =="067123" ~ "11",
+                               chromosome =="067124" ~ "12",
+                               chromosome =="067125" ~ "13",
+                               chromosome =="067126" ~ "14",
+                               chromosome =="067127" ~ "15",
+                               chromosome =="067128" ~ "16",
+                               chromosome =="067129" ~ "17",
+                               chromosome =="067130" ~ "18",
+                               chromosome =="067131" ~ "19",
+                               chromosome =="067132" ~ "20",
+                               chromosome =="067133" ~ "21",
+                               chromosome =="067134" ~ "22",
+                               chromosome =="067135" ~ "23",
+                               chromosome =="067136" ~ "24",
+                               TRUE ~ chromosome)) |> 
+  unite("position", c(chromosome:window_pos_1), remove =FALSE) |> 
+  mutate(chromosome = factor(chromosome)) |>
+  filter(avg_wc_fst > 0.6)
+```
+
+```{r}
+fst_colors <- rep(c("grey72","grey17"), length.out =24) 
+
+fst_pop <- ggplot(pixy_fst3, aes(x=position, y =avg_wc_fst, color=chromosome)) + 
+  geom_point() + 
+  scale_color_manual(values=fst_colors) +
+  facet_grid(rows=vars(pop3)) + 
+  theme_bw() + 
+  theme(panel.background = element_rect(fill="white"), 
+        legend.position = "none")
+```
+
+```{r}
+ggsave(fst_pop, 
+       filename="fst_pop.jpeg", 
+       device = "jpeg", 
+       height=8, width=16, units="in")
+```
+
+# Region
+```{r}
+pixy_fst <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/reg/pixy_fst.txt", 
+     delim = "\t", escape_double = FALSE, 
+     trim_ws = TRUE)
+``` 
+
+```{r warning=FALSE}
+pixy_fst2 <-pixy_fst |> 
+  separate(chromosome, c("designation","chromosome")) |> 
+  filter(designation =="NC") |> 
+  unite("pop3",pop1:pop2, remove=FALSE) |> 
+  filter(pop3 %in% c("Core_Leading","Core_Southern","Core_Torres","Southern_Leading","Southern_Torres","Leading_Torres"))
+```
+
+```{r}
+pixy_fst3 <- pixy_fst2 |> 
+  mutate(chromosome =case_when(chromosome =="067113" ~ "01", 
+                               chromosome =="067114" ~ "02",
+                               chromosome =="067115" ~ "03",
+                               chromosome =="067116" ~ "04",
+                               chromosome =="067117" ~ "05",
+                               chromosome =="067118" ~ "06",
+                               chromosome =="067119" ~ "07",
+                               chromosome =="067120" ~ "08",
+                               chromosome =="067121" ~ "09",
+                               chromosome =="067122" ~ "10",
+                               chromosome =="067123" ~ "11",
+                               chromosome =="067124" ~ "12",
+                               chromosome =="067125" ~ "13",
+                               chromosome =="067126" ~ "14",
+                               chromosome =="067127" ~ "15",
+                               chromosome =="067128" ~ "16",
+                               chromosome =="067129" ~ "17",
+                               chromosome =="067130" ~ "18",
+                               chromosome =="067131" ~ "19",
+                               chromosome =="067132" ~ "20",
+                               chromosome =="067133" ~ "21",
+                               chromosome =="067134" ~ "22",
+                               chromosome =="067135" ~ "23",
+                               chromosome =="067136" ~ "24",
+                               TRUE ~ chromosome)) |> 
+  unite("position", c(chromosome:window_pos_1), remove =FALSE) |> 
+  mutate(chromosome = factor(chromosome)) |>
+  filter(avg_wc_fst > 0.6)
+```
+
+```{r}
+fst_colors <- rep(c("grey72","grey17"), length.out =24) 
+
+fst_reg <- ggplot(pixy_fst3, aes(x=position, y =avg_wc_fst, color=chromosome)) + 
+  geom_point() + 
+  scale_color_manual(values=fst_colors) +
+  facet_grid(rows=vars(pop3)) + 
+  theme_bw() + 
+  theme(panel.background = element_rect(fill="white"), 
+        legend.position = "none")
+```
+
+```{r}
+ggsave(fst_reg, 
+       filename="fst_reg.jpeg", 
+       device = "jpeg", 
+       height=8, width=16, units="in")
+```

@@ -1,0 +1,93 @@
+---
+title: "fst"
+author: "Elliott Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library("tidyverse")
+library(reshape2)
+library(ggplot2)
+```
+
+```{r}
+pixy_fst <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pixy_fst.txt", 
+     delim = "\t", escape_double = FALSE, 
+     trim_ws = TRUE)
+```
+
+# Create Fst table [test]
+```{r}
+fst_data <- subset(pixy_fst, pop1=="Sudbury" & pop2=="Tongue") |> 
+  drop_na(avg_wc_fst)
+overall_fst <- sum(fst_data$avg_wc_fst * fst_data$no_snps)/sum(fst_data$no_snps)
+overall_fst
+```
+
+# Loop populations through Fst table 
+
+```{r}
+populations <- unique(c("Torres","Tongue","Vlassof","Sudbury","Cockermouth","Keswick","StBees","Chauvel","Heron","ReefHQ"))
+fst_matrix <- matrix(NA, nrow = length(populations), ncol = length(populations), 
+                     dimnames = list(populations, populations))  
+
+
+# Loop through each unique pair of populations
+for (i in 1:(length(populations)-1)) {
+  for (j in (i+1):length(populations)) {
+    
+    # Get the population pair
+    popA <- populations[i]
+    popB <- populations[j]
+    
+    # Filter the PIXY output for this population pair
+    fst_data <- subset(pixy_fst, (pop1 == popA & pop2 == popB) | (pop1 == popB & pop2 == popA)) |> 
+      drop_na(avg_wc_fst)
+    
+    # Calculate the weighted mean Fst
+    if (nrow(fst_data) > 0) {
+      overall_fst <- sum(fst_data$avg_wc_fst * fst_data$no_snps) / sum(fst_data$no_snps)
+      
+      # Store the Fst value in the matrix
+      fst_matrix[popA, popB] <- overall_fst
+      fst_matrix[popB, popA] <- overall_fst  # Symmetric matrix
+      
+    }
+  }
+} 
+
+fst_matrix
+write.csv(fst_matrix, file ="./03.population_structure_NEW/pixy_tables/fst_matrix.csv")
+```
+
+# Plot matrix
+
+```{r warning=FALSE}
+library(reshape2)
+library(ggplot2)
+```
+
+```{r}
+  get_lower_tri<-function(fst_matrix){
+    fst_matrix[lower.tri(fst_matrix)] <- NA
+    return(fst_matrix)
+  }
+
+upper_tri <- get_lower_tri(fst_matrix) 
+melted_fst <- melt(upper_tri, na.rm=TRUE) 
+
+fst.matrix <- ggplot(data=melted_fst, aes(Var2, Var1, fill = value)) + 
+  geom_tile(color="white")+
+ scale_fill_gradient(low = "cornsilk", high = "maroon1", limit = c(0,1), space = "Lab", 
+   name="Fst\nCorrelation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed(); fst.matrix
+
+pdf()
+fst.matrix
+dev.off()
+```
+
