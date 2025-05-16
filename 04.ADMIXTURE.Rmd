@@ -1,5 +1,5 @@
 ---
-title: "Population structure"
+title: "ADMIXTURE"
 output: github_document 
 --- 
 
