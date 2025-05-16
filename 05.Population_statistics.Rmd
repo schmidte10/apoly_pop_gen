@@ -1,8 +1,6 @@
 ---
 title: "Population statistics"
-output:
-  html_document:
-    df_print: paged
+output: github_document 
 --- 
 
 Using [PIXY](https://pixy.readthedocs.io/en/latest/) for getting population statistics including, **Fst**, **Tajima's D**, **Dxy**, and **nucleotide diversity**. 
