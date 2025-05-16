@@ -9,4 +9,4 @@ Using [PIXY](https://pixy.readthedocs.io/en/latest/) for getting population stat
 pixy --stats fst pi dxy --vcf data/gatk.filtered.relaxed_studywide.vcf.gz --populations data/apoly_populations_metadata_INDREG.txt --window_size 10000 --n_cores 8 --bypass_invariant_check yes
 ```
 
-Plotting data can be done using the following RMarkdown scripts to create Fst matrix, Dxy matrix, Fst m 
+Plotting data can be done using the following RMarkdown scripts to create [Fst matrix](https://github.com/schmidte10/apoly_pop_gen/blob/main/Rmarkdown_files/05b.pixy_fst_matrix.Rmd), [Dxy matrix](https://github.com/schmidte10/apoly_pop_gen/blob/main/Rmarkdown_files/05c.pixy_dxy_matrix.Rmd), [Fst genome wide](https://github.com/schmidte10/apoly_pop_gen/blob/main/Rmarkdown_files/05a.pixy_fst_cmprsn.Rmd) 
