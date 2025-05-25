@@ -1,5 +1,5 @@
 ---
-title: "09a.PCAdapt"
+title: "09.Outlier Analysis"
 output: github_document 
 --- 
 
@@ -32,7 +32,8 @@ apoly_bed <- "data/gatk.filtered.relaxed_studywide.bicolor.biallelic.test.bed"
 apoly_pcadapt <-  read.pcadapt(apoly_bed, type = "bed")
 ```
 
-# PCAdapt
+# Outlier analysis
+## PCAdapt
 
 ```{r eval=FALSE, echo =TRUE}
 apoly_populations_kplot <- pcadapt(input = apoly_pcadapt, K=10)
@@ -65,44 +66,44 @@ sample4   3   pop3
 poplist.names <- read.delim("data/population_list.txt", header =FALSE)
 ```
 
-# PCA
+## PCA
 
-## PC1 v PC2
+### PC1 v PC2
 ```{r eval =FALSE, echo =TRUE}
 pdf("outputs/apoly_populations_pca1v2.pdf")
 plot(apoly_populations_pca, option = "scores", i=1, j=2, pop = poplist.names$V3)
 dev.off()
 ```
 
-## PC1 v PC3
+### PC1 v PC3
 ```{r eval =FALSE, echo =TRUE}
 pdf("outputs/apoly_populations_pca1v3.pdf")
 plot(apoly_populations_pca, option = "scores", i=1, j=3, pop = poplist.names$V3)
 dev.off()
 ```
 
-## PC2 v PC3
+### PC2 v PC3
 ```{r eval =FALSE, echo =TRUE}
 pdf("outputs/apoly_populations_pca2v3.pdf")
 plot(apoly_populations_pca, option = "scores", i=2, j=3, pop = poplist.names$V3)
 dev.off()
 ```
 
-# Manhattan plot
+## Manhattan plot
 ```{r eval =FALSE, echo =TRUE}
 png("outputs/pcadapt_apoly_manhattan.png")
 plot(apoly_populations_pca, option= "manhattan") 
 dev.off() 
 ```
 
-# qqplot
+## qqplot
 ```{r eval =FALSE, echo =TRUE}
 png("outputs/pcadapt_apoly_qqplot.png") 
 plot(apoly_populations_pca, option ="qqplot") 
 dev.off()
 ```
 
-# p-values of outliers
+## p-values of outliers
 ```{r eval =FALSE, echo =TRUE}
 apoly_pcadapt_pvalues <- as.data.frame(apoly_populations_pca$pvalues) 
 pdf("outputs/apoly_populations_pvalues.pdf")
@@ -110,7 +111,7 @@ hist(apoly_populations_pca$pvalues, xlab ="p-values", main =NULL, breaks =50, co
 dev.off() 
 ```
 
-# significant outliers
+## significant outliers
 ```{r eval =FALSE, echo =TRUE}
 apoly_populations_padj <- p.adjust(apoly_populations_pca$pvalues, method ="bonferroni") 
 alpha <- 0.1 #[adjust as necessary]
@@ -120,9 +121,9 @@ length(outliers)
 write.table(outliers, file="outputs/apoly_populations_pcaoutliers.txt") 
 ```
 
-# BAYPASS
+## BAYPASS
 
-## load software
+### load software
 ```bash
 module load plink
 ```
