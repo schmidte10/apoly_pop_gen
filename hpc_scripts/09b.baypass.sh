@@ -1,8 +1,8 @@
 #!/bin/bash
 #PBS -j oe
-#PBS -N baypass_pre
+#PBS -N baypass
 #PBS -l select=1:ncpus=4:mem=100gb
-#PBS -l walltime=10:00:00
+#PBS -l walltime=200:00:00
 #PBS -m ae
 #PBS -M elliott.schmidt@my.jcu.edu.au
 
@@ -16,9 +16,10 @@ echo "------------------------------------------------------"
 shopt -s expand_aliases
 source /etc/profile.d/modules.sh  
 
-module load plink 
+module load plink
+module load baypass_public 
 
-cd ./2024analysis/04.OutlierAnalysis
+cd ./2025wgs
 
 #awk '{print $3, "\t",$1}' data/poppop.txt > data/apoly_populations_metadata_POPIND.txt
 
@@ -32,7 +33,7 @@ cd ./2024analysis/04.OutlierAnalysis
 
 #plink --file analysis/baypass/apoly_populations.plink --allow-extra-chr --freq counts --family --out analysis/baypass/apoly_populations 
 
-npop2=20 # number of pop times 2
-tail -n +2 analysis/baypass/apoly_populations.frq.strat | awk '{ $9 = $8 - $7 } 1' | awk '{print $7,$9}' | tr " " "\n" | awk -v pp=${npop2} '{if (NR % pp == 0){a=a $0"";print a; a=""} else a=a $0" "}' > analysis/baypass/apoly_populations_baypass.txt 
+#npop2=20 # number of pop times 2
+#tail -n +2 analysis/baypass/apoly_populations.frq.strat | awk '{ $9 = $8 - $7 } 1' | awk '{print $7,$9}' | tr " " "\n" | awk -v pp=${npop2} '{if (NR % pp == 0){a=a $0"";print a; a=""} else a=a $0" "}' > analysis/baypass/apoly_populations_baypass.txt 
 
-g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 10 -gfile analysis/baypass/apoly_populations_baypass.txt -outprefix apoly_populations_baypass -nthreads 4
+g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile baypass/apoly_populations_baypass.txt -outprefix baypass/apoly_populations_baypass -nthreads 4
