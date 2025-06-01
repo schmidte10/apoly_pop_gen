@@ -1,0 +1,412 @@
+---
+title: "Acanthochromis polyacanthus"
+output:
+  github_document:
+    pandoc_args: --webtex
+---
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Local_adaptation/Chapter1_LocalAdaptation/genetic_data")
+```
+
+Load libraries 
+
+
+```{r libraries, message=FALSE, warning=FALSE, echo=TRUE, results='hide'}
+library(tidyverse)
+library(adegenet) 
+library(ade4)
+library(dartR)
+library(patchwork) 
+library(ape) 
+library(bigsnpr) 
+library(OutFLANK) 
+library(vcfR)
+```
+
+```{r load_data, cache=TRUE}
+setwd("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics")
+vcf <- read.vcfR("./data/thinned_output.vcf.gz")  
+
+genlight <- vcfR2genlight(vcf) 
+save(genlight, file="./data/genlight.RData")
+
+pop.table <- genlight@ind.names %>%
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor), 
+         Population = factor(case_when(Region == "T" ~ "DUG", 
+                                TRUE ~ Population)))
+
+genlight@pop <- pop.table$Population
+genlight@ind.names <- as.character(pop.table$value)
+```
+
+
+```{r Allele_frequency_spectrum2, echo=TRUE, eval=FALSE}
+# per population 
+# need to rename  gl@pop for this to begin working 
+# currently individuals are listed as pop 
+for (i in levels(genlight@pop)) {
+  myFreq <- glMean(genlight[genlight@pop == i])
+  myFreq <- c(myFreq, 1 - myFreq)
+  hist(myFreq, proba=TRUE, 
+     col="cadetblue4", 
+     xlab="Allele Frequencies", 
+     main=paste0(i," Distribution of Allele Frequencies"), 
+     nclass=20, 
+     ylim = c(0,4)) ;lines(temp$x, temp$y*2, lwd=3)
+}
+``` 
+
+# PCA 
+
+#### run on hpc
+```{bash, eval=FALSE, echo=TRUE}
+pop.table <- gl@ind.names %>%
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) 
+save(pop.table, file)
+
+gl@pop <- pop.table$Population 
+gl@ind.names <- as.character(pop.table$value)
+
+pca1 <- glPca(gl, 
+              parallel = TRUE) 
+
+save(pca1, file = "./pca1.filtered.RData")
+```
+
+Load file from hpc into R
+```{r PCA, warning=FALSE} 
+load("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/data/genlight_pca.RData")
+
+pca1.data <- as.data.frame(pca1$scores) 
+pca1.data <- pca1.data %>% 
+  mutate(value = row.names(pca1.data)) |>
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) |> 
+  mutate(Population = factor(case_when(Region == "T" ~ "DUG", 
+                                TRUE ~ Population)))  
+
+#--- plot ---# 
+ggplot(pca1.data, aes(PC1, PC2, color = Population)) + 
+  geom_point(size = 3, alpha =0.3) + 
+    #geom_text(aes(label =Population), 
+            #check_overlap = TRUE, 
+            #nudge_x = sample(-10:10, 89, replace = TRUE), 
+            #nudge_y = sample(-10:10, 89, replace = TRUE), show.legend = FALSE) + 
+  theme_classic() + 
+  coord_equal() + 
+  #scale_color_manual(values = mycol) +
+  #guides(color =guide_legend(override.aes = list(alpha =1))) + 
+  theme(legend.position ='right', 
+        legend.background = element_rect(color ='black'), 
+        legend.title =element_blank()) + 
+  xlab(paste0('PC1 (', sprintf('%0.1f%% explained var.', 100*pca1$eig[1]/sum(pca1$eig)), ")")) + 
+  ylab(paste0('PC2 (', sprintf('%0.1f%% explained var.', 100*pca1$eig[2]/sum(pca1$eig)), ")"))
+```
+
+There appears to be a clear separation of fish by region, including Chauvel reef fish being on their own. According  PC1 (that explains 16.0% of the varianace), Chauvel reef fish appear to be quite different from the other populations. 
+
+Additional pca's will be made for each population separately to see how individuals are dispersed, and to identify potential outliers 
+
+```{r cairns_pca, warning=FALSE, eval=FALSE, echo=FALSE}
+#--- split up populations ---# 
+load("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Local_adaptation/Chapter1_LocalAdaptation/genetic_data/pca.v2.filtered.cairns.RData")
+
+pca_cairns.only.data <- as.data.frame(pca_cairns.only$scores); pca_cairns.only.data <- pca_cairns.only.data %>% 
+  as_tibble() %>% 
+  mutate(value =row.names(pca_cairns.only.data)) %>% 
+  select(value, everything()) %>%
+  mutate(Region = str_sub(value, 1, 1) ,
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) %>% 
+  mutate(reef.names=factor(Population, levels = c("SUD","VLA","TON"), 
+                      labels = c("Sudbury reef", "Vlassof cay", "Tongue reef"))); eig <- pca_cairns.only$eig 
+
+#--- plot ---# 
+ggplot(pca_cairns.only.data, aes(PC1, PC2, color = Population)) + 
+  geom_point(size = 2, alpha =0.3) + 
+  geom_text(aes(label =Population), 
+            check_overlap = TRUE, 
+            nudge_x = sample(-10:10, 89, replace = TRUE), 
+            nudge_y = sample(-10:10, 89, replace = TRUE), show.legend = FALSE) + 
+  theme_classic() + 
+  coord_equal() + 
+  scale_color_manual(values = c("#22a884","#7ad151","#fde725")) +
+  guides(color =guide_legend(override.aes = list(alpha =1))) + 
+  theme(legend.position =c(0.8,0.8), 
+        legend.background = element_rect(color ='black'), 
+        legend.title =element_blank()) + 
+  xlab(paste0('PC1 (', sprintf('%0.1f%% explained var.', 100*eig[1]/sum(eig)), ")")) + 
+  ylab(paste0('PC2 (', sprintf('%0.1f%% explained var.', 100*eig[2]/sum(eig)), ")"))
+
+``` 
+
+```{r mackay_pca, warning=FALSE, eval=FALSE, echo=FALSE}
+#--- split up populations ---# 
+load("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Local_adaptation/Chapter1_LocalAdaptation/genetic_data/pca.v2.filtered.mackay.RData")
+
+pca_mackay.only.data <- as.data.frame(pca_mackay.only$scores); pca_mackay.only.data <- pca_mackay.only.data %>% 
+  as_tibble() %>% 
+  mutate(value =row.names(pca_mackay.only.data)) %>% 
+  select(value, everything()) %>%
+  mutate(Region = str_sub(value, 1, 1) ,
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) %>% 
+  mutate(reef.names=factor(Population, levels = c("CHA","CKM","KES"), 
+                      labels = c("Cahuvel reef", "Cockermouth island", "Keswick island"))); eig <- pca_mackay.only$eig 
+
+#--- plot ---# 
+ggplot(pca_mackay.only.data, aes(PC1, PC2, color = Population)) + 
+  geom_point(size = 2, alpha =0.3) + 
+  geom_text(aes(label =Population), 
+            check_overlap = TRUE, 
+            nudge_x = sample(-10:10, 89, replace = TRUE), 
+            nudge_y = sample(-10:10, 89, replace = TRUE), show.legend = FALSE) + 
+  theme_classic() + 
+  coord_equal() + 
+  scale_color_manual(values = c("#440154","#414487","#2a788e")) +
+  guides(color =guide_legend(override.aes = list(alpha =1))) + 
+  theme(legend.position =c(0.5,0.8), 
+        legend.background = element_rect(color ='black'), 
+        legend.title =element_blank()) + 
+  xlab(paste0('PC1 (', sprintf('%0.1f%% explained var.', 100*eig[1]/sum(eig)), ")")) + 
+  ylab(paste0('PC2 (', sprintf('%0.1f%% explained var.', 100*eig[2]/sum(eig)), ")"))
+
+``` 
+
+# DAPC analysis 
+Similar to example provided tutorial analysis will be conducted with both 3 and 10 axis kept 
+```{r DAPC}
+grp4 <- find.clusters(genlight, max.n.clust = 20, glPca = pca1, n.pca = 3, n.clust = 4)
+#grp12 <- find.clusters(gl.v2.filtered, max.n.clust =20, glPca =pca1, n.pca =10, n.clust =12)
+
+dapc4 <- dapc(genlight, grp4$grp, glPca = pca1, n.pca = 70, n.da = 3)
+a_score <- optim.a.score(dapc4) # optimal is 6 PCs
+
+#dapc12 <- dapc(gl.v2.filtered, grp12$grp, glPca =pca1, n.pca =70, n.da =3) 
+#a_score <- optim.a.score(dapc6) # optimal is 7 PCs
+
+dapc4 <- dapc(genlight, grp4$grp, glPca = pca1, n.pca =6, n.da=3)
+scatter(dapc4) 
+
+dapctbl4 <- tibble(pops = genlight@pop, inds = genlight@ind.names, gdapc4 = as.factor(dapc4$assign), xdapc4 =dapc4$ind.coord[,1], ydapc4 =dapc4$ind.coord[,2], zDAPC =dapc4$ind.coord[, 3])
+head(dapctbl4)
+
+# conserved variance
+dapc4$var 
+
+# so the variance explained by the individual discriminant aces is 
+100*dapc4$var*dapc4$eig/sum(dapc4$eig) 
+
+#--- plot ---# 
+ggplot(dapctbl4, aes(xdapc4, ydapc4, color = gdapc4)) + 
+  geom_point(show.legend =TRUE, 
+             alpha =0.5, 
+             size =7) + 
+  #geom_text(aes(label = inds), 
+            #show.legend =FALSE, 
+            #check_overlap =TRUE, 
+            #nudge_x =5) + 
+  scale_color_manual(labels=c("Core","Torres","Leading","Heron/Chauvel"), values=c("#C77CFF","#00BFC4","#F8766D","#7CAE00" ))+
+  theme_classic() + 
+  xlab(paste0('DA1 (', sprintf('%0.1f%% explained variance',100*dapc4$var*dapc4$eig[1]/sum(dapc4$eig)),")")) + 
+  ylab(paste0('DA2 (', sprintf('%0.1f%% explained variance',100*dapc4$var*dapc4$eig[2]/sum(dapc4$eig)),")"))
+```
+
+Compare DAPC without clustering - samples clustered by population
+```{r DAPC_non-clustering}
+#dapcPop <- dapc(gl.v2.filtered, grp =pop, glPca = pca1, n.pca =70, n.da =2)
+#a_score <- optim.a.score(dapcPop) # optimal score is 10
+set.seed(5)
+dapcPop <- dapc(genlight, grp =pop, glPca = pca1, n.pca =23, n.da =2)
+a_score <- optim.a.score(dapcPop) # optimal score is 10
+
+dapcPoptbl <- tibble(pop =genlight@pop, 
+                     inds =genlight@ind.names, 
+                     gdapcPop =factor(dapcPop$assign), 
+                     xdapcPop = dapcPop$ind.coord[,1], 
+                     ydapcPop =dapcPop$ind.coord[,2]) 
+
+ggplot(dapcPoptbl, aes(pop, gdapcPop)) + 
+  geom_count() + 
+  theme_bw() + 
+  xlab("site") + 
+  ylab("assigned population") + 
+  scale_size_continuous(range =c(1,20)) 
+
+g <- ggplot(dapcPoptbl, aes(xdapcPop, ydapcPop, fill=pop)) + 
+  geom_point(aes(color =genlight@pop, shape = gdapcPop), 
+             alpha =0.5, size=6) + 
+  scale_shape_manual(values=c(0,15,22,1,2,16,17,25,3,23))+
+  theme_bw() + 
+  xlab(paste0('DA1 (', sprintf('%0.1f%% explained var.', 100*dapcPop$var*dapcPop$eig[1]/sum(dapcPop$eig)), ")")) +
+  ylab(paste0('DA2 (', sprintf('%0.1f%% explained var.', 100*dapcPop$var*dapcPop$eig[2]/sum(dapcPop$eig)), ")")) +
+  labs(shape = 'Assigned\npopulation', color = 'Site') + 
+  stat_ellipse(aes(xdapcPop, ydapcPop, group =gdapcPop, color=pop), level =0.99, alpha =0.3, linetype ='dotted') + 
+  theme(plot.margin =unit(c(-1,1,1,1), 'cm')) 
+  #scale_color_manual(values = c("#0D47A1","#0D47A1","#0D47A1","#DA3A36","#DA3A36","#DA3A36")); g
+
+g2 <- ggplot(dapcPoptbl, aes(xdapcPop, fill =genlight@pop, color = genlight@pop)) + 
+  geom_density(alpha =0.3) + 
+  theme_bw() + 
+  xlab("") +
+  ylab("") +
+  theme(legend.position = 'none', #c(0.1, 0.8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.margin = unit(c(1, 1, -1, 1), 'cm'))
+
+g2+g  + plot_layout(heights = c(1, 3), ncol = 1)
+  
+```
+
+```{r contribtuion_of_alleles, fig.height=8, fig.width=16}
+contribPopx <- loadingplot(dapcPop$var.contr, threshold = 2e-04, axis =1, lab.jitter =1, lab =genlight@loc.names, 
+                           srt =90, adj=0, 
+                           cex.lab =0.5) 
+dapcdriverPopx <- contribPopx$var.names
+
+freqs <- tab(genlight[,genlight@loc.names %in% contribPopx$var.names], freq = TRUE)
+
+# by site of origin 
+fr.site <- as.data.frame(freqs) %>% 
+  mutate(grp = dapcPop$assign, pops = genlight@pop, inds = genlight@ind.names) %>% 
+  group_by(pops) %>% 
+  summarize(across(contains('NC'), list(mean))) %>% 
+  pivot_longer(cols = -1, names_to = 'Locus', values_to = 'Frequency')  
+fr.site$pops <- fct_relevel(fr.site$pops, c("DUG","TON","VLA","RHQ","SUD","CKM","KES","SBI","CHA","HER"))
+
+ggplot(fr.site, aes(reorder(Locus, Frequency), pops, fill = Frequency)) + 
+  geom_tile() + 
+  theme_classic() + 
+  coord_fixed(ratio = 2/1) + 
+  theme(axis.text.x = element_blank()) + 
+  xlab("DAPC group") + 
+  ylab("Locus")
+```
+
+# Neighbour-joining tree 
+```{r neighbour-joining tree, fig.height=8, fig.width=16}
+distance <- dist(genlight)
+NJ <- nj(distance)
+
+par(mfrow=c(1,2))
+mycol=c("#74ad46","#b49342","#8168cd","#4fa37c","#c86436","#d97b8d","#668fce","#a4507e","#ca5ab9","#d23f5a")
+prescols=c("#CC33CC","#33CCFF","#FF9933","#660066","#33CCFF","grey77","#33CCFF","#CC0033","#CC0033","#CC0033")
+
+plot.phylo(NJ, type = 'fan', tip.color = c(prescols)[genlight@pop], cex =0.5)
+plot.phylo(NJ, type = 'fan',tip.color = c(mycol)[genlight@pop], cex =0.5)
+
+# calculating genetic distance by 1-gl.propShared
+Gdis <- 1 - gl.propShared(genlight) 
+df <- as.data.frame(Gdis) %>% 
+  mutate(ID =row.names(.)) %>% 
+  pivot_longer(cols =1:82, values_to = 'Dist', names_to = 'ID2') %>% 
+  mutate(ID2 =as.factor(ID2)) 
+
+ggplot(df, aes(ID,ID2, fill=Dist)) + 
+  geom_tile() + 
+  theme_classic() + 
+  coord_equal() + 
+  scale_fill_distiller(palette = 'YlOrBr', direction = 1) + 
+  theme(axis.text.x = element_text(angle=90))  
+
+ggsave("nuc_tree.png", plot =nuc.tree, bg ="transparent", dpi = 300, width =8, height =4)
+```
+
+```{r fig.height=8, fig.width=16}
+NJ2 <- nj(Gdis)
+par(mfrow=c(1,2))
+plot.phylo(NJ2, type ='fan', tip.color = c(prescols)[genlight@pop], cex =0.5)
+plot.phylo(NJ2, type ='fan', tip.color = c(mycol)[genlight@pop], cex =0.5)
+#plot.phylo(NJ2, type ='radial', tip.color = c(mycol)[gl.v2.filtered@pop], cex =0.5)
+
+```
+
+
+```{r diversity nucleotide diversity, eval=FALSE, echo=FALSE}
+pi.all <- read.table("./diversity/SCH11429_finalgatk_10kb.windowed.pi", header =TRUE) 
+#hist(pi.all$PI, br=20) 
+
+pi.all$id <- as.numeric(row.names(pi.all))  
+pi.all2 <- pi.all %>% 
+  mutate(CHROM2 = as.factor(CHROM), 
+         No = 1:nrow(.), 
+         lanes = cut(No, breaks = seq(0, 200000, by = 20000))) %>% 
+  group_by(lanes) %>% 
+  mutate(id2 = seq_len(n()))
+head(pi.all2)
+
+D_poz <- pi.all2 |> 
+  slice_max(order_by = PI, n =1)
+
+D_neg <- pi.all2 |> 
+  slice_min(order_by = PI, n =1)
+
+D_sel_pi <-bind_rows(D_poz, D_neg) |> 
+  droplevels()
+
+ggplot(pi.all2, aes(x = id2, y= PI, color = CHROM)) + 
+  geom_col(show.legend =FALSE) +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~lanes, ncol = 1) +
+  theme_classic() +
+  xlab("") +
+  ylab("PI") +
+  theme(axis.text.x = element_blank(), strip.background = element_blank(), strip.text.x = element_blank())+
+  geom_text(data = D_sel_pi, aes(x = id2, y = PI), label = '*', color = 'black')
+
+```
+
+```{r diversitytajimasD, eval=FALSE, echo=FALSE}
+taj.all <- read.table("./diversity/SCH11429_finalgatk_10kb.Tajima.D", header =TRUE) 
+
+taj.all$id <- as.numeric(row.names(taj.all)) 
+head(taj.all) 
+
+taj.all2 <- taj.all %>% 
+  mutate(TajimaD =as.numeric(TajimaD), 
+         CHROM2 =as.factor(CHROM), 
+         No =1:nrow(.), 
+         lanes =cut(No, breaks = seq(0, 200000, by = 20000))) |> 
+  group_by(lanes) |> 
+  mutate(id2 = seq_len(n())) 
+
+D_poz <- taj.all2 |> 
+  slice_max(order_by = TajimaD, n =1)
+
+D_neg <- taj.all2 |> 
+  slice_min(order_by = TajimaD, n =1)
+
+D_sel_taj <-bind_rows(D_poz, D_neg) |> 
+  droplevels()
+
+head(taj.all2)
+
+ggplot(taj.all2, aes(x=id2, y=TajimaD)) + 
+  geom_col(aes(color = CHROM2), show.legend = F) +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~lanes, ncol = 1) +
+  theme_classic() +
+  xlab("") +
+  ylab("Tajima's D") +
+  theme(axis.text.x = element_blank(), strip.background = element_blank(), strip.text.x = element_blank()) +
+  geom_text(data = D_sel_taj, aes(x = id2, y = TajimaD), label = '*', color = 'black')
+```
+
+
+
+
