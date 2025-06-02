@@ -155,5 +155,59 @@ tail -n +2 baypass/apoly_populations.frq.strat | awk '{ $9 = $8 - $7 } 1' | awk 
 
 ```bash 
 g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile baypass/apoly_populations_baypass.txt -outprefix apoly_populations_baypass -nthreads 4
+```
 
+```bash 
+module load tabix
+bgzip -c -d ../data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz > ../data/gatk.filtered.relaxed_studywide.bioclor.biallelic.vcf
+grep -v "^#" ../data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf | cut -f1-3 | awk '{print $0"\t"NR}' > ../data/apoly_populations_SNPs.txt
+```
+
+```{r echo=TRUE, eval =FALSE} 
+module load R 
+module show R/4.4.0 
+R /fast/tmp/containers/R-4.4.0/sif R 
+
+library(ape)
+library(mvtnorm)
+source("../Rscripts/baypass_utils.R")
+
+omega <- as.matrix(read.table("apoly_populations_baypass_mat_omega.out"))
+
+pi.beta.coef <- read.table("apoly_populations_baypass_summary_beta_params.out", header = TRUE)
+
+bta14.data <- geno2YN("apoly_populations_baypass.txt")
+
+simu.bta <- simulate.baypass(omega.mat = omega, nsnp = 5000, sample.size = bta14.data$NN, beta.pi = pi.beta.coef$Mean, pi.maf = 0, suffix = "btapods")
+
+q()
+```
+
+```bash
+g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile baypass/G.btapods -outprefix G.btapods -nthreads 2
+```
+
+```{r echo=TRUE, eval =FALSE} 
+R /fast/tmp/containers/R-4.4.0/sif R 
+
+source("../Rscripts/baypass_utils.R")
+library("ape")
+library("corrplot")
+
+pod.xtx <- read.table("G.btapods_summary_pi_xtx.out", header = T)
+pod.thresh <- quantile(pod.xtx$M_XtX ,probs = 0.99)
+pod.thresh
+
+#9.520471
+
+q()
+```
+
+```bash 
+cat apoly_populations_baypass_summary_pi_xtx.out | awk '$4>9.520471' > baypass_outliers.txt
+```
+
+```bash 
+awk 'FNR==NR{a[$1];next} (($4) in a)' baypass_outliers.txt ../data/apoly_populations_SNPs.txt | cut -f2 > baypass_outlierSNPIDs.txt
+wc -l baypass_outlierSNPIDs.txt 
 ```
