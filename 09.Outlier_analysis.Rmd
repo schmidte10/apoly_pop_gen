@@ -211,3 +211,8 @@ cat apoly_populations_baypass_summary_pi_xtx.out | awk '$4>9.520471' > baypass_o
 awk 'FNR==NR{a[$1];next} (($4) in a)' baypass_outliers.txt ../data/apoly_populations_SNPs.txt | cut -f2 > baypass_outlierSNPIDs.txt
 wc -l baypass_outlierSNPIDs.txt 
 ```
+Before running this code remove column names and the first row that has the population names and convert the metadata file from a **.csv** file to a **.txt** file. 
+
+```bash
+g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile apoly_populations_baypass.txt -efile metadata/env_sum.txt -scalecov -omegafile apoly_populations_baypass_mat_omega.out -outprefix apoly_populations_baypass_avg_summer -nthreads 4
+```
