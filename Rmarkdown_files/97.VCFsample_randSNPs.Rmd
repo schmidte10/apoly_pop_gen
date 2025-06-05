@@ -1,0 +1,14 @@
+---
+title: "r"
+output:
+  github_document:
+    pandoc_args: --webtex
+---
+
+```{r}
+module load tabix
+bcftools query -f '%CHROM\t%POS\n' data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz > data/snp_positions.txt
+shuf data/snp_positions.txt | head -n 50000 > data/selected_snps.txt
+bcftools view -T data/selected_snps.txt -Ov -o data/gatk.filtered.relaxed_studywide.bicolor.biallelic.thinned50000.vcf.gz data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz
+```
+
