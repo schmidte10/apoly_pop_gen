@@ -1,0 +1,236 @@
+---
+title: "BAYPASS outliers"
+output:
+  github_document:
+    pandoc_args: --webtex
+---
+
+
+Load libraries 
+
+
+```{r libraries, message=FALSE, warning=FALSE, echo=TRUE, results='hide'}
+library(tidyverse)
+library(adegenet) 
+library(ade4)
+library(dartR)
+library(patchwork) 
+library(ape) 
+library(bigsnpr) 
+library(OutFLANK) 
+library(vcfR)
+```
+
+```{r load_data, cache=TRUE}
+vcf <- read.vcfR("./09.Outlier_Analysis/baypass/baypass_OutlierSNPs_filtered.vcf.gz")  
+
+genlight <- vcfR2genlight(vcf) 
+#save(genlight, file="./data/genlight.RData")
+
+pop.table <- genlight@ind.names %>%
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) 
+         #Population = factor(case_when(Region == "T" ~ "DUG", 
+                                #TRUE ~ Population)))
+
+genlight@pop <- pop.table$Population
+genlight@ind.names <- as.character(pop.table$value)
+```
+
+
+```{r Allele_frequency_spectrum2, echo=TRUE, eval=TRUE}
+# per population 
+# need to rename  gl@pop for this to begin working 
+# currently individuals are listed as pop 
+for (i in levels(genlight@pop)) {
+  myFreq <- glMean(genlight[genlight@pop == i])
+  myFreq <- c(myFreq, 1 - myFreq)
+  hist(myFreq, proba=TRUE, 
+     col="cadetblue4", 
+     xlab="Allele Frequencies", 
+     main=paste0(i," Distribution of Allele Frequencies"), 
+     nclass=20, 
+     ylim = c(0,4))
+}
+``` 
+
+# PCA 
+
+#### run on hpc
+```{r, eval=TRUE, echo=TRUE}
+pop.table <- genlight@ind.names %>%
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor)) 
+
+
+genlight@pop <- pop.table$Population 
+genlight@ind.names <- as.character(pop.table$value)
+
+pca1 <- glPca(genlight, 
+              parallel = TRUE)
+
+#save(pca1, file = "./pca1.filtered.RData")
+```
+
+Load file from hpc into R
+```{r PCA, warning=FALSE} 
+pca1.data <- as.data.frame(pca1$scores) 
+pca1.data <- pca1.data %>% 
+  mutate(value = row.names(pca1.data)) |>
+  as_tibble() %>%
+  mutate(Region = str_sub(value, 1, 1),
+         Population = str_sub(value, 2, 4),
+         ID = str_sub(value, 5),
+         across(where(is.character), as.factor))  
+
+#--- plot ---# 
+ggplot(pca1.data, aes(PC1, PC2, color = Population)) + 
+  geom_point(size = 3, alpha =0.7) + 
+  theme_classic() + 
+  coord_equal() + 
+  scale_color_manual(values = c("#6666CC","#99CCCC","#00CCCC","#FF6666","#FF9933","#FFCC33")) +
+  theme(legend.position ='right', 
+        legend.background = element_rect(color ='black'), 
+        legend.title =element_blank()) + 
+  xlab(paste0('PC1 (', sprintf('%0.1f%% explained var.', 100*pca1$eig[1]/sum(pca1$eig)), ")")) + 
+  ylab(paste0('PC2 (', sprintf('%0.1f%% explained var.', 100*pca1$eig[2]/sum(pca1$eig)), ")"))
+```
+
+# DAPC analysis 
+Similar to example provided tutorial analysis will be conducted with both 3 and 10 axis kept 
+```{r DAPC}
+grp4 <- find.clusters(genlight, max.n.clust = 20, glPca = pca1, n.pca = 3, n.clust = 4)
+dapc4 <- dapc(genlight, grp4$grp, glPca = pca1, n.pca = 70, n.da = 3)
+a_score <- optim.a.score(dapc4) # optimal is 6 PCs
+dapc4 <- dapc(genlight, grp4$grp, glPca = pca1, n.pca =6, n.da=3)
+scatter(dapc4) 
+
+# Reduce to 2 clusters 
+
+dapctbl4 <- tibble(pops = genlight@pop, inds = genlight@ind.names, gdapc4 = as.factor(dapc4$assign), xdapc4 =dapc4$ind.coord[,1], ydapc4 =dapc4$ind.coord[,2])
+head(dapctbl4)
+
+# conserved variance
+dapc4$var 
+
+# so the variance explained by the individual discriminant aces is 
+100*dapc4$var*dapc4$eig/sum(dapc4$eig) 
+
+#--- plot ---# 
+ggplot(dapctbl4, aes(xdapc4, ydapc4, color = gdapc4)) + 
+  geom_point(show.legend =TRUE, 
+             alpha =0.5, 
+             size =7) + 
+  scale_color_manual(labels=c("Sudbury","Vlassof","Tongue","Leading"), values=c("#FF6666","#FFCC33","#FF9933","#6666CC"))+
+  theme_classic() + 
+  xlab(paste0('DA1 (', sprintf('%0.1f%% explained variance',100*dapc4$var*dapc4$eig[1]/sum(dapc4$eig)),")")) + 
+  ylab(paste0('DA2 (', sprintf('%0.1f%% explained variance',100*dapc4$var*dapc4$eig[2]/sum(dapc4$eig)),")"))
+```
+
+Compare DAPC without clustering - samples clustered by population
+```{r DAPC_non-clustering}
+set.seed(123)
+dapcPop <- dapc(genlight, grp =pop, glPca = pca1, n.pca =23, n.da =2)
+a_score <- optim.a.score(dapcPop) # optimal score is 2
+
+dapcPoptbl <- tibble(pop =genlight@pop, 
+                     inds =genlight@ind.names, 
+                     gdapcPop =factor(dapcPop$assign), 
+                     xdapcPop = dapcPop$ind.coord[,1], 
+                     ydapcPop =dapcPop$ind.coord[,2]) 
+
+ggplot(dapcPoptbl, aes(pop, gdapcPop)) + 
+  geom_count() + 
+  theme_bw() + 
+  xlab("site") + 
+  ylab("assigned population") + 
+  scale_size_continuous(range =c(1,20)) 
+
+g <- ggplot(dapcPoptbl, aes(xdapcPop, ydapcPop, fill=pop)) + 
+  geom_point(aes(color =genlight@pop, shape = gdapcPop), 
+             alpha =0.5, size=6) + 
+  theme_bw() + xlim(-12,12) +
+  xlab(paste0('DA1 (', sprintf('%0.1f%% explained var.', 100*dapcPop$var*dapcPop$eig[1]/sum(dapcPop$eig)), ")")) +
+  ylab(paste0('DA2 (', sprintf('%0.1f%% explained var.', 100*dapcPop$var*dapcPop$eig[2]/sum(dapcPop$eig)), ")")) +
+  stat_ellipse(aes(xdapcPop, ydapcPop, group =gdapcPop, color=pop), level =0.99, alpha =0.3, linetype ='dotted') + 
+  theme(plot.margin =unit(c(-1,1,1,1), 'cm')); g
+
+g2 <- ggplot(dapcPoptbl, aes(xdapcPop, fill =genlight@pop, color = genlight@pop)) + 
+  geom_density(alpha =0.3) + 
+  theme_bw() + 
+  xlab("") + xlim(-12,12) +
+  ylab("") +
+  theme(legend.position = 'none', #c(0.1, 0.8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.margin = unit(c(1, 1, -1, 1), 'cm'))
+
+g2+g  + plot_layout(heights = c(1, 3), ncol = 1)
+  
+```
+
+```{r contribtuion_of_alleles, fig.height=8, fig.width=16}
+contribPopx <- loadingplot(dapcPop$var.contr, threshold = 2e-03, axis =1, lab.jitter =1, lab =genlight@loc.names, 
+                           srt =90, adj=0, 
+                           cex.lab =0.5) 
+dapcdriverPopx <- contribPopx$var.names
+
+freqs <- tab(genlight[,genlight@loc.names %in% contribPopx$var.names], freq = TRUE)
+
+# by site of origin 
+fr.site <- as.data.frame(freqs) %>% 
+  mutate(grp = dapcPop$assign, pops = genlight@pop, inds = genlight@ind.names) %>% 
+  group_by(pops) %>% 
+  summarize(across(contains('NC'), list(mean)))  %>% 
+  pivot_longer(cols = -1, names_to = 'Locus', values_to = 'Frequency') 
+
+ggplot(fr.site, aes(reorder(Locus, Frequency), pops, fill = Frequency)) + 
+  geom_tile() + 
+  theme_classic() + 
+  coord_fixed(ratio = 2/1) + 
+  theme(axis.text.x = element_blank()) + 
+  xlab("DAPC group") + 
+  ylab("Locus")
+```
+
+# Neighbour-joining tree 
+```{r neighbour-joining tree, fig.height=8, fig.width=16}
+distance <- dist(genlight)
+NJ <- nj(distance)
+
+par(mfrow=c(1,2))
+mycol=c("#6666CC","#99CCCC","#00CCCC","#FF6666","#FF9933","#FFCC33")
+
+plot.phylo(NJ, type = 'fan',tip.color = c(mycol)[genlight@pop], cex =0.5)
+
+# calculating genetic distance by 1-gl.propShared
+Gdis <- 1 - gl.propShared(genlight) 
+df <- as.data.frame(Gdis) %>% 
+  mutate(ID =row.names(.)) %>% 
+  pivot_longer(cols =1:48, values_to = 'Dist', names_to = 'ID2') %>% 
+  mutate(ID2 =as.factor(ID2)) 
+
+ggplot(df, aes(ID,ID2, fill=Dist)) + 
+  geom_tile() + 
+  theme_classic() + 
+  coord_equal() + 
+  scale_fill_distiller(palette = 'YlOrBr', direction = 1) + 
+  theme(axis.text.x = element_text(angle=90))  
+
+#ggsave("nuc_tree.png", plot =nuc.tree, bg ="transparent", dpi = 300, width =8, height =4)
+```
+
+```{r fig.height=8, fig.width=16}
+NJ2 <- nj(Gdis)
+par(mfrow=c(1,2))
+plot.phylo(NJ2, type ='fan', tip.color = c(mycol)[genlight@pop], cex =0.5)
+plot.phylo(NJ2, type ='radial', tip.color = c(mycol)[genlight@pop], cex =0.5)
+
+```
+
