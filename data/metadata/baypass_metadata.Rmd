@@ -1,0 +1,36 @@
+---
+title: "metadata"
+output: github_document 
+
+---
+# Load libraries 
+
+```{r}
+library(tidyverse)
+```
+
+
+# Import data
+
+```{r}
+metadata_ereef <- read_csv("data/metadata/metadata_ereef.csv")
+```
+
+# Data manipulation 
+
+```{r}
+env_var <- metadata_ereef |> 
+  select(-Population) |>
+  scale(center =TRUE, scale =TRUE) 
+
+ran_var1 <- as.data.frame(matrix(rnorm(6 * 100), nrow = 6, ncol = 100))
+ran_var2 <- scale(ran_var1)
+
+env_var_baypass <- cbind(env_var, ran_var2)
+```
+
+# Export data 
+```{r}
+write.table(env_var_baypass, "baypass_env_metadata.txt", col.names = FALSE, row.names = FALSE)
+```
+

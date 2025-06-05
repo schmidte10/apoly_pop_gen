@@ -114,11 +114,11 @@ dev.off()
 ## significant outliers
 ```{r eval =FALSE, echo =TRUE}
 apoly_populations_padj <- p.adjust(apoly_populations_pca$pvalues, method ="bonferroni") 
-alpha <- 0.1 #[adjust as necessary]
+alpha <- 0.05 #[adjust as necessary]
 outliers <- which(apoly_populations_padj < alpha) 
 length(outliers) 
 
-write.table(outliers, file="outputs/apoly_populations_pcaoutliers.txt") 
+write.table(outliers, file="outputs/apoly_populations_pcaoutliers_p05.txt") 
 ```
 
 ## BAYPASS
@@ -160,7 +160,16 @@ g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypas
 ```bash 
 module load tabix
 bgzip -c -d ../data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz > ../data/gatk.filtered.relaxed_studywide.bioclor.biallelic.vcf
+
 grep -v "^#" ../data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf | cut -f1-3 | awk '{print $0"\t"NR}' > ../data/apoly_populations_SNPs.txt
+
+awk '{print $2}' PCAdapt/outputs/apoly_populations_pcaoutliers.txt > PCAdapt/outputs/apoly_populations_pcadapt_outliers_numbers.txt
+
+awk 'FNR==NR{a[$1];next} (($4) in a)' PCAdapt/outputs/apoly_populations_pcadapt_outliers_numbers.txt data/apoly_populations_SNPs.txt   | cut -f3 > PCAdapt/outputs/pcadapt_outlierSNPIDs.txt
+
+head pcadapt_outlierSNPIDs.txt
+
+
 ```
 
 ```{r echo=TRUE, eval =FALSE} 
@@ -216,3 +225,32 @@ Before running this code remove column names and the first row that has the popu
 ```bash
 g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile apoly_populations_baypass.txt -efile metadata/env_sum.txt -scalecov -omegafile apoly_populations_baypass_mat_omega.out -outprefix apoly_populations_baypass_avg_summer -nthreads 4
 ```
+
+
+
+Below is not sorted out - very messy
+
+
+```bash
+bcftools query -f '%CHROM\t%POS\n' data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz > data/all_sites.txt
+
+awk 'NR==FNR {pos[$1]; next} ($2 in pos)' PCAdapt/outputs/apoly_populations_pcaoutliers_p05_no_headers.txt data/all_sites.txt > data/matched_sites_PCAdapt.txt
+
+awk '{count[$2]++; chroms[$2]=chroms[$2]","$1} END {for (pos in count) if (count[pos]>1) print pos, substr(chroms[pos], 2)}' data/matched_sites_PCAdapt.txt | sort -k1,1n > data/matched_sites_PCAdapt_duplicates.txt
+
+
+awk 'NR==FNR {dup[$1]; next} !($1 in dup)' data/matched_sites_PCAdapt_duplicates.txt PCAdapt/outputs/apoly_populations_pcaoutliers_p05_no_headers.txt > data/apoly_populations_pcaoutliers_p05_no_headers_no_duplicates.txt
+
+zcat data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz | awk 'NR==FNR {pos[$1]; next} /^#/ {print; next} ($2 in pos)' PCAdapt/outputs/apoly_populations_pcaoutliers_p05_no_headers.txt - | bgzip > PCAdapt/outputs/PCAdapt_SNPs_filteredp05.vcf.gz
+
+bcftools view -v snps PCAdapt/outputs/PCAdapt_SNPs_filtered.vcf.gz -H | wc -l
+grep -v "^#" baypass/baypass_OutlierSNPs_filtered.vcf.gz | wc -l
+
+
+zcat data/gatk.filtered.relaxed_studywide.bicolor.biallelic.vcf.gz | awk 'NR==FNR {pos[$1]; next} /^#/ {print; next} ($2 in pos)' baypass/baypass_outlierSNPIDs_no_duplicates.txt - | bgzip > baypass/baypass_OutlierSNPs_filtered.vcf.gz
+
+awk 'NR==FNR {pos[$1]; next} ($2 in pos)' baypass/baypass_outlierSNPIDs.txt data/all_sites.txt > data/matched_sites_baypass.txt
+
+awk 'NR==FNR {dup[$1]; next} !($1 in dup)' data/matched_sites_baypass_duplicates.txt baypass/baypass_outlierSNPIDs.txt > baypass_outlierSNPIDs_no_duplicates.txt
+```
+
