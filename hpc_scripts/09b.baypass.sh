@@ -36,4 +36,6 @@ cd ./2025wgs
 #npop2=20 # number of pop times 2
 #tail -n +2 analysis/baypass/apoly_populations.frq.strat | awk '{ $9 = $8 - $7 } 1' | awk '{print $7,$9}' | tr " " "\n" | awk -v pp=${npop2} '{if (NR % pp == 0){a=a $0"";print a; a=""} else a=a $0" "}' > analysis/baypass/apoly_populations_baypass.txt 
 
-g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile baypass/apoly_populations_baypass.txt -outprefix baypass/apoly_populations_baypass -nthreads 4
+#g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile baypass/apoly_populations_baypass.txt -outprefix baypass/apoly_populations_baypass -nthreads 4
+
+g_baypass singularity run /fast/tmp/containers/baypass_public-v2.41.sif g_baypass -npop 6 -gfile baypass/apoly_populations_baypass.txt -efile baypass/metadata/baypass_env_metadata.txt -scalecov -omegafile baypass/apoly_populations_baypass_mat_omega.out -outprefix baypass/apoly_populations_baypass_env -nthreads 4
