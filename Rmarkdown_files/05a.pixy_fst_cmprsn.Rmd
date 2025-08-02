@@ -10,132 +10,134 @@ library("tidyverse")
 ```
 
 ```{r}
+pixy_to_long <- function(pixy_files){
+
+  pixy_df <- list()
+
+  for(i in 1:length(pixy_files)){
+
+    stat_file_type <- gsub(".*_|.txt", "", pixy_files[i])
+
+    if(stat_file_type == "pi"){
+
+      df <- read_delim(pixy_files[i], delim = "\t")
+      df <- df %>%
+        gather(-pop, -window_pos_1, -window_pos_2, -chromosome,
+               key = "statistic", value = "value") %>%
+        rename(pop1 = pop) %>%
+        mutate(pop2 = NA)
+
+      pixy_df[[i]] <- df
+
+
+    } else{
+
+      df <- read_delim(pixy_files[i], delim = "\t")
+      df <- df %>%
+        gather(-pop1, -pop2, -window_pos_1, -window_pos_2, -chromosome,
+               key = "statistic", value = "value")
+      pixy_df[[i]] <- df
+
+    }
+
+  }
+
+  bind_rows(pixy_df) %>%
+    arrange(pop1, pop2, chromosome, window_pos_1, statistic)
+
+}
+```
+
+
+```{r}
 pixy_fst <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pop/pixy_fst.txt", 
      delim = "\t", escape_double = FALSE, 
      trim_ws = TRUE)
+```
+
+```{r}
+pixy_folder <- "C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pop/" 
+
+pixy_files <- list.files(pixy_folder, full.names = TRUE)
+
+pixy_df <- pixy_to_long(pixy_files)
 ``` 
 
-```{r warning=FALSE}
-pixy_fst2 <-pixy_fst |> 
-  separate(chromosome, c("designation","chromosome")) |> 
-  filter(designation =="NC") |> 
-  unite("pop3",pop1:pop2, remove=FALSE) |> 
-  filter(pop3 %in% c("Sudbury_Cockermouth","Sudbury_Heron","Sudbury_Torres","Cockermouth_Heron","Cockermouth_Torres","Heron_Torres"))
+```{r}
+pixy_labeller <- as_labeller(c(avg_pi = "pi",
+                             avg_dxy = "D[XY]",
+                             avg_wc_fst = "F[ST]"),
+                             default = label_parsed)
 ```
 
 ```{r}
-pixy_fst3 <- pixy_fst2 |> 
-  mutate(chromosome =case_when(chromosome =="067113" ~ "01", 
-                               chromosome =="067114" ~ "02",
-                               chromosome =="067115" ~ "03",
-                               chromosome =="067116" ~ "04",
-                               chromosome =="067117" ~ "05",
-                               chromosome =="067118" ~ "06",
-                               chromosome =="067119" ~ "07",
-                               chromosome =="067120" ~ "08",
-                               chromosome =="067121" ~ "09",
-                               chromosome =="067122" ~ "10",
-                               chromosome =="067123" ~ "11",
-                               chromosome =="067124" ~ "12",
-                               chromosome =="067125" ~ "13",
-                               chromosome =="067126" ~ "14",
-                               chromosome =="067127" ~ "15",
-                               chromosome =="067128" ~ "16",
-                               chromosome =="067129" ~ "17",
-                               chromosome =="067130" ~ "18",
-                               chromosome =="067131" ~ "19",
-                               chromosome =="067132" ~ "20",
-                               chromosome =="067133" ~ "21",
-                               chromosome =="067134" ~ "22",
-                               chromosome =="067135" ~ "23",
-                               chromosome =="067136" ~ "24",
-                               TRUE ~ chromosome)) |> 
-  unite("position", c(chromosome:window_pos_1), remove =FALSE) |> 
-  mutate(chromosome = factor(chromosome)) |>
-  filter(avg_wc_fst > 0.6)
+fst_colors <- rep(c("dodgerblue4","grey17"), length.out =24) 
+# plotting summary statistics across all chromosomes
+pixy_df2 <- pixy_df |> 
+  mutate(chromosome =case_when(chromosome =="NC_067113.1" ~ "01", 
+                               chromosome =="NC_067114.1" ~ "02",
+                               chromosome =="NC_067115.1" ~ "03",
+                               chromosome =="NC_067116.1" ~ "04",
+                               chromosome =="NC_067117.1" ~ "05",
+                               chromosome =="NC_067118.1" ~ "06",
+                               chromosome =="NC_067119.1" ~ "07",
+                               chromosome =="NC_067120.1" ~ "08",
+                               chromosome =="NC_067121.1" ~ "09",
+                               chromosome =="NC_067122.1" ~ "10",
+                               chromosome =="NC_067123.1" ~ "11",
+                               chromosome =="NC_067124.1" ~ "12",
+                               chromosome =="NC_067125.1" ~ "13",
+                               chromosome =="NC_067126.1" ~ "14",
+                               chromosome =="NC_067127.1" ~ "15",
+                               chromosome =="NC_067128.1" ~ "16",
+                               chromosome =="NC_067129.1" ~ "17",
+                               chromosome =="NC_067130.1" ~ "18",
+                               chromosome =="NC_067131.1" ~ "19",
+                               chromosome =="NC_067132.1" ~ "20",
+                               chromosome =="NC_067133.1" ~ "21",
+                               chromosome =="NC_067134.1" ~ "22",
+                               chromosome =="NC_067135.1" ~ "23",
+                               chromosome =="NC_067136.1" ~ "24",
+                               TRUE ~ NA)) |> 
+  filter(!is.na(chromosome)) |> 
+  mutate(chromosome =as.numeric(chromosome)) |> 
+  mutate(chrom_color_group = case_when(as.numeric(chromosome) %% 2 != 0 ~ "even",
+                                 TRUE ~ "odd" )) |>
+  filter(statistic %in% c("avg_pi", "avg_dxy", "avg_wc_fst")) 
+
+pixy_plot <- pixy_df2 |> 
+  ggplot(aes(x = (window_pos_1 + window_pos_2)/2, y = value, color =chrom_color_group))+
+  geom_point(size = 0.5, alpha = 0.5, stroke = 0)+
+  facet_grid(statistic ~ chromosome,
+             scales = "free_y", switch = "x", space = "free_x",
+             labeller = labeller(statistic = pixy_labeller,
+                                 value = label_value))+
+  xlab("Chromsome")+
+  ylab("Statistic Value")+
+  scale_color_manual(values = c("grey50", "black"))+
+  theme_classic()+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.1, "cm"),
+        strip.background = element_blank(),
+        strip.placement = "outside",
+        legend.position ="none")+
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0,NA))
+  
+png("pixy_plot2.png", width = 8, height = 6, units = "in", res=300)
+pixy_plot 
+dev.off()
 ```
 
-```{r}
-fst_colors <- rep(c("grey72","grey17"), length.out =24) 
 
-fst_pop <- ggplot(pixy_fst3, aes(x=position, y =avg_wc_fst, color=chromosome)) + 
-  geom_point() + 
-  scale_color_manual(values=fst_colors) +
-  facet_grid(rows=vars(pop3)) + 
-  theme_bw() + 
-  theme(panel.background = element_rect(fill="white"), 
-        legend.position = "none")
-```
 
-```{r}
-ggsave(fst_pop, 
-       filename="fst_pop.jpeg", 
-       device = "jpeg", 
-       height=8, width=16, units="in")
-```
 
-# Region
-```{r}
-pixy_fst <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/reg/pixy_fst.txt", 
-     delim = "\t", escape_double = FALSE, 
-     trim_ws = TRUE)
-``` 
 
-```{r warning=FALSE}
-pixy_fst2 <-pixy_fst |> 
-  separate(chromosome, c("designation","chromosome")) |> 
-  filter(designation =="NC") |> 
-  unite("pop3",pop1:pop2, remove=FALSE) |> 
-  filter(pop3 %in% c("Core_Leading","Core_Southern","Core_Torres","Southern_Leading","Southern_Torres","Leading_Torres"))
-```
 
-```{r}
-pixy_fst3 <- pixy_fst2 |> 
-  mutate(chromosome =case_when(chromosome =="067113" ~ "01", 
-                               chromosome =="067114" ~ "02",
-                               chromosome =="067115" ~ "03",
-                               chromosome =="067116" ~ "04",
-                               chromosome =="067117" ~ "05",
-                               chromosome =="067118" ~ "06",
-                               chromosome =="067119" ~ "07",
-                               chromosome =="067120" ~ "08",
-                               chromosome =="067121" ~ "09",
-                               chromosome =="067122" ~ "10",
-                               chromosome =="067123" ~ "11",
-                               chromosome =="067124" ~ "12",
-                               chromosome =="067125" ~ "13",
-                               chromosome =="067126" ~ "14",
-                               chromosome =="067127" ~ "15",
-                               chromosome =="067128" ~ "16",
-                               chromosome =="067129" ~ "17",
-                               chromosome =="067130" ~ "18",
-                               chromosome =="067131" ~ "19",
-                               chromosome =="067132" ~ "20",
-                               chromosome =="067133" ~ "21",
-                               chromosome =="067134" ~ "22",
-                               chromosome =="067135" ~ "23",
-                               chromosome =="067136" ~ "24",
-                               TRUE ~ chromosome)) |> 
-  unite("position", c(chromosome:window_pos_1), remove =FALSE) |> 
-  mutate(chromosome = factor(chromosome)) |>
-  filter(avg_wc_fst > 0.6)
-```
 
-```{r}
-fst_colors <- rep(c("grey72","grey17"), length.out =24) 
 
-fst_reg <- ggplot(pixy_fst3, aes(x=position, y =avg_wc_fst, color=chromosome)) + 
-  geom_point() + 
-  scale_color_manual(values=fst_colors) +
-  facet_grid(rows=vars(pop3)) + 
-  theme_bw() + 
-  theme(panel.background = element_rect(fill="white"), 
-        legend.position = "none")
-```
 
-```{r}
-ggsave(fst_reg, 
-       filename="fst_reg.jpeg", 
-       device = "jpeg", 
-       height=8, width=16, units="in")
-```
+
+
+
