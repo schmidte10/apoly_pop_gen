@@ -346,7 +346,7 @@ all_outliers <- list(PCAdapt = pcadapt, Baypass = baypass, BaypassEnv = baypass_
 
 library(UpSetR)
 
-#pdf("All_outliers_upsetplot.pdf")
+pdf("All_outliers_upsetplot.pdf")
 upset(
   data = fromList(all_outliers), 
   order.by = "freq", 
@@ -359,9 +359,33 @@ upset(
   number.angles = 30, 
   nintersects = 11
 ) 
-#dev.off() 
+dev.off()
+
 ```
 
+```{r echo=FALSE, eval=TRUE}
+library(UpSetR)
+
+pcadapt <- scan("09.Outlier_Analysis/summary/apoly_populations_pcaoutliers_p05_no_headers_no_duplicates.txt", what = "", quiet = TRUE)
+baypass <- scan("09.Outlier_Analysis/summary/baypass_outlierSNPIDs_no_duplicates.txt", what = "", quiet = TRUE)
+baypass_env <- scan("09.Outlier_Analysis/summary/baypass_env_outlierSNPIDs.txt", what = "", quiet = TRUE)  
+baypass_ran <- scan("09.Outlier_Analysis/summary/baypass_ran12_outlierSNPIDs_no_duplicates.txt", what = "", quiet = TRUE) 
+
+all_outliers <- list(PCAdapt = pcadapt, Baypass = baypass, BaypassEnv = baypass_env, BaypassRan = baypass_ran)
+
+upset(
+  data = fromList(all_outliers), 
+  order.by = "freq", 
+  empty.intersections = "on", 
+  point.size = 3.5, 
+  line.size = 2, 
+  mainbar.y.label = "Outlier Count", 
+  sets.x.label = "Total Outliers", 
+  text.scale = c(1.3, 1.3, 1, 1, 2, 1.3), 
+  number.angles = 30, 
+  nintersects = 11
+)
+```
 
 
 

@@ -5,11 +5,11 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 # Population
-```{r}
+```{r echo=TRUE, eval =FALSE}
 library("tidyverse")
 ```
 
-```{r}
+```{r echo=TRUE, eval =FALSE}
 pixy_to_long <- function(pixy_files){
 
   pixy_df <- list()
@@ -49,13 +49,7 @@ pixy_to_long <- function(pixy_files){
 ```
 
 
-```{r}
-pixy_fst <- read_delim("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pop/pixy_fst.txt", 
-     delim = "\t", escape_double = FALSE, 
-     trim_ws = TRUE)
-```
-
-```{r}
+```{r echo=TRUE, eval =FALSE}
 pixy_folder <- "C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/03.population_structure_NEW/pixy_folder/pop/" 
 
 pixy_files <- list.files(pixy_folder, full.names = TRUE)
@@ -63,15 +57,14 @@ pixy_files <- list.files(pixy_folder, full.names = TRUE)
 pixy_df <- pixy_to_long(pixy_files)
 ``` 
 
-```{r}
+```{r echo=TRUE, eval =FALSE}
 pixy_labeller <- as_labeller(c(avg_pi = "pi",
                              avg_dxy = "D[XY]",
                              avg_wc_fst = "F[ST]"),
                              default = label_parsed)
 ```
 
-```{r}
-fst_colors <- rep(c("dodgerblue4","grey17"), length.out =24) 
+```{r echo=TRUE, eval =FALSE}
 # plotting summary statistics across all chromosomes
 pixy_df2 <- pixy_df |> 
   mutate(chromosome =case_when(chromosome =="NC_067113.1" ~ "01", 
@@ -125,7 +118,7 @@ pixy_plot <- pixy_df2 |>
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0,NA))
   
-png("pixy_plot2.png", width = 8, height = 6, units = "in", res=300)
+png("pixy_plot.png", width = 8, height = 6, units = "in", res=300)
 pixy_plot 
 dev.off()
 ```
