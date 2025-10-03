@@ -22,8 +22,10 @@ library(tidyverse)
 library(ggpubr)
 library(cowplot)
 het <- read_tsv("C:/Users/jc527762/OneDrive - James Cook University/PhD dissertation/Data/Chapter2_Genetics/02.DemographicPatterns/plink2.het") 
-region.list <- factor(rep(c("CORE", "CHAUVEL","LEADING","HERON","LEADING","TORRES STRAIT","REEF HQ"), c(24, 8, 8, 8, 16, 15, 3))) 
-mycol=c("#FF5722","#D32F2F","dodgerblue","#00BCD4","#455A64","#212121")
+#region.list <- factor(rep(c("CORE", "CHAUVEL","LEADING","HERON","LEADING","TORRES STRAIT","REEF HQ"), c(24, 8, 8, 8, 16, 15, 3))) 
+pop.list <- factor(rep(c("Sudbury", "Tongue","Vlassof","Chauvel","Cockermouth","Heron","Keswick", 
+                         "St. Bee's", "Torres", "Captive"), c(9, 7, 8, 8, 8, 8, 8, 8, 15, 3))) 
+mycol=c("#FF9900","red","firebrick1","firebrick4","#3366FF","#6699FF","#66CCFF","#00BCD4","#455A64","#212121")
 ``` 
 
 As part of this calculation PLINK provides the observed and expected heterozygosity (Ho, He) as well as the inbreeding coefficient **F** which is calculated as $1-\frac{H0}{He}$ 
@@ -31,11 +33,11 @@ As part of this calculation PLINK provides the observed and expected heterozygos
 ```{r}
 het2 <- het |>
   rename(sampleID = '#IID') |> 
-  mutate(region = region.list, 
+  mutate(population = pop.list, 
          Ho = (OBS_CT-`O(HOM)`)/OBS_CT, 
          He = (OBS_CT-`E(HOM)`)/OBS_CT) |> 
   pivot_longer(cols = c(F,Ho,He), names_to = "stat", values_to = "value") |> 
-  mutate(region=fct_relevel(region, c("TORRES STRAIT","CORE","LEADING","CHAUVEL","HERON","REEF HQ")))
+  mutate(population=fct_relevel(population, c("Torres","Tongue","Vlassof","Sudbury","Cockermouth","Keswick", "St. Bee's", "Chauvel", "Heron", "Captive")))
 
 ```
 
@@ -44,9 +46,9 @@ het2 <- het |>
 
 f_plot <- het2 |> 
   filter(stat=="F") |> 
-  ggplot(aes(x=region,y=value)) + 
-  geom_boxplot(aes(color=region),alpha=0.5) + 
-  geom_point(aes(x=region,color=region)) + 
+  ggplot(aes(x=population,y=value)) + 
+  geom_boxplot(aes(color=population),alpha=0.5) + 
+  geom_point(aes(x=population,color=population)) + 
   theme_pubr() + 
   theme(legend.position = "none", 
         text = element_text(size=12) , 
@@ -57,11 +59,11 @@ f_plot <- het2 |>
 
 het_plot <- het2 |> 
   filter(stat!="F") |> 
-  ggplot(aes(x=region,y=value)) + 
+  ggplot(aes(x=population,y=value)) + 
   geom_boxplot(aes(fill=stat,color=stat),alpha=0.5) + 
 #  geom_point(aes(x=location,color=stat), position = position_jitter(w=0.1,h=0)) + 
   theme_pubr() + 
-  theme(legend.position = c(.95,.95), 
+  theme(legend.position = c(.15,.95), 
         legend.justification = c("right", "top"), 
         legend.box.just = "right", 
         legend.margin = margin(6, 6, 6, 6),
